@@ -66,6 +66,21 @@ export default function App() {
   const learnedCount = Object.values(review).filter((status) => status === 'learned').length;
   const practiceCount = Object.values(review).filter((status) => status === 'practice').length;
   const progress = (Object.keys(review).length / flashcards.length) * 100;
+  const categoryProgress = Array.from({ length: 6 }, (_, index) => {
+    const category = `T${index + 1}`;
+    const cards = flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === category);
+    const learned = cards.filter((card) => review[card.id] === 'learned').length;
+    const revisit = cards.filter((card) => review[card.id] === 'practice').length;
+    const reviewed = learned + revisit;
+    return {
+      category,
+      total: cards.length,
+      learned,
+      revisit,
+      unseen: cards.length - reviewed,
+      percent: cards.length > 0 ? Math.round((reviewed / cards.length) * 100) : 0,
+    };
+  });
 
   function advanceCard() {
     if (studyDeck.length === 0) return;
@@ -428,6 +443,37 @@ export default function App() {
             </div>
           )}
         </section>
+      </section>
+
+      <section className="mx-auto mb-10 max-w-[1100px] border-t border-line pt-5" aria-labelledby="category-progress-heading">
+        <h2 id="category-progress-heading" className="mb-4 text-[17px] font-medium">Progress by category</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[440px] border-collapse text-right text-[11px] tabular-nums">
+            <caption className="sr-only">Study progress for categories T1 through T6. Reviewed includes learned and revisit cards.</caption>
+            <thead className="border-b border-line text-[#70766c]">
+              <tr>
+                <th scope="col" className="px-2 py-3 text-left font-medium">Category</th>
+                <th scope="col" className="px-2 py-3 font-medium">Total</th>
+                <th scope="col" className="px-2 py-3 font-medium">Learned</th>
+                <th scope="col" className="px-2 py-3 font-medium">Revisit</th>
+                <th scope="col" className="px-2 py-3 font-medium">Unseen</th>
+                <th scope="col" className="px-2 py-3 font-medium">Reviewed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categoryProgress.map(({ category, total, learned, revisit, unseen, percent }) => (
+                <tr key={category} className="border-b border-line">
+                  <th scope="row" className="px-2 py-3 text-left font-mono font-medium">{category}</th>
+                  <td className="px-2 py-3">{total}</td>
+                  <td className="px-2 py-3 text-green-dark">{learned}</td>
+                  <td className="px-2 py-3 text-[#a55847]">{revisit}</td>
+                  <td className="px-2 py-3 text-muted">{unseen}</td>
+                  <td className="px-2 py-3">{percent}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-[#989b91] max-[720px]:min-h-[48px]">
