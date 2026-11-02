@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Layers, ListChecks, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Layers, ListChecks, RotateCcw, Sparkles, X } from 'lucide-react';
 import { flashcards } from './gh300Deck';
 
 type ReviewState = Record<string, 'learned' | 'practice'>;
@@ -34,9 +34,19 @@ export default function App() {
   const { currentIndex, review, mode } = study;
   const [quizSelections, setQuizSelections] = useState<string[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [isRevisitListOpen, setIsRevisitListOpen] = useState(false);
+  const [isRevisitMode, setIsRevisitMode] = useState(false);
+  const [revisitCardIds, setRevisitCardIds] = useState<string[]>([]);
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStart = useRef<number | null>(null);
   const activeCard = flashcards[currentIndex];
+  const studyDeck = isRevisitMode
+    ? revisitCardIds.flatMap((id) => {
+      const card = flashcards.find((item) => item.id === id);
+      return card ? [card] : [];
+    })
+    : flashcards;
+  const deckPosition = studyDeck.findIndex((card) => card.id === activeCard.id);
   const quizFinished = activeCard.answers.length === 1
     ? quizSelections.length > 0
     : activeCard.answers.every((answer) => quizSelections.includes(answer))
@@ -58,7 +68,12 @@ export default function App() {
   const progress = (Object.keys(review).length / flashcards.length) * 100;
 
   function advanceCard() {
-    setStudy((current) => ({ ...current, currentIndex: (current.currentIndex + 1) % flashcards.length }));
+    if (studyDeck.length === 0) return;
+    const nextCard = studyDeck[(deckPosition + 1) % studyDeck.length];
+    setStudy((current) => ({
+      ...current,
+      currentIndex: flashcards.findIndex((card) => card.id === nextCard.id),
+    }));
     setQuizSelections([]);
     setIsRevealed(false);
     setDragOffset(0);
@@ -73,6 +88,17 @@ export default function App() {
     setStudy((current) => ({ ...current, mode: nextMode }));
     setQuizSelections([]);
     setIsRevealed(false);
+  }
+
+  function viewRevisitCard(index: number) {
+    const ids = flashcards.filter((card) => review[card.id] === 'practice').map((card) => card.id);
+    setRevisitCardIds(ids);
+    setIsRevisitMode(true);
+    setStudy((current) => ({ ...current, currentIndex: index }));
+    setQuizSelections([]);
+    setIsRevealed(false);
+    setDragOffset(0);
+    setIsRevisitListOpen(false);
   }
 
   function selectQuizChoice(choice: string) {
@@ -101,6 +127,9 @@ export default function App() {
 
   function resetSession() {
     setStudy((current) => ({ currentIndex: 0, review: {}, mode: current.mode }));
+    setIsRevisitMode(false);
+    setRevisitCardIds([]);
+    setIsRevisitListOpen(false);
     setQuizSelections([]);
     setIsRevealed(false);
   }
@@ -174,8 +203,34 @@ export default function App() {
             </div>
             <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-[#757b71] max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-4 max-[720px]:text-[10px] max-[380px]:gap-3 max-[380px]:text-[9px]">
               <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><Check className="text-green max-[720px]:w-3" size={14} /> {learnedCount} learned</span>
-              <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><RotateCcw className="text-green max-[720px]:w-3" size={13} /> {practiceCount} to revisit</span>
+              <button
+                className="flex cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-left text-[#757b71] hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green max-[720px]:gap-1"
+                type="button"
+                aria-expanded={isRevisitListOpen}
+                aria-controls="revisit-card-list"
+                onClick={() => setIsRevisitListOpen((open) => !open)}
+              >
+                <RotateCcw className="text-coral max-[720px]:w-3" size={13} /> {practiceCount} to revisit
+                <ChevronDown className={`transition-transform ${isRevisitListOpen ? 'rotate-180' : ''}`} size={12} />
+              </button>
             </div>
+            {isRevisitListOpen && (
+              <div id="revisit-card-list" className="mt-3 max-h-[220px] overflow-y-auto border-y border-line" aria-label="Cards to revisit">
+                {practiceCount === 0 ? (
+                  <p className="my-3 text-[10px] text-muted">No cards to revisit yet.</p>
+                ) : flashcards.map((card, index) => review[card.id] === 'practice' && (
+                  <button
+                    className="flex w-full cursor-pointer flex-col items-start gap-1 border-0 border-b border-line bg-transparent px-1 py-[10px] text-left last:border-b-0 hover:bg-[#f5f5ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green"
+                    key={card.id}
+                    type="button"
+                    onClick={() => viewRevisitCard(index)}
+                  >
+                    <span className="font-mono text-[8px] text-coral">{card.subject}</span>
+                    <span className="text-[10px] leading-[1.4] text-ink">{card.question}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-[46px] flex items-center gap-[11px] border-t border-line pt-[18px] max-[720px]:hidden">
@@ -189,7 +244,8 @@ export default function App() {
         </aside>
 
         <section className="w-full max-w-[570px] max-[720px]:max-w-none" aria-label="Flashcard study area">
-          <div className="mb-5 flex w-fit gap-[3px] bg-[#eae9e1] p-[3px] max-[720px]:mb-[17px]" role="tablist" aria-label="Study mode">
+          <div className="mb-5 flex items-center gap-[10px] max-[720px]:mb-[17px]">
+          <div className="flex w-fit gap-[3px] bg-[#eae9e1] p-[3px]" role="tablist" aria-label="Study mode">
             <button role="tab" aria-selected={mode === 'flashcards'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('flashcards')}>
               <Layers size={15} /> Flashcards
             </button>
@@ -197,15 +253,30 @@ export default function App() {
               <ListChecks size={15} /> Quiz
             </button>
           </div>
+          {isRevisitMode && (
+            <button
+              className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent px-1 py-2 text-[10px] text-[#757b71] underline decoration-1 underline-offset-2 hover:text-green-dark"
+              type="button"
+              onClick={() => {
+                setIsRevisitMode(false);
+                setRevisitCardIds([]);
+                setQuizSelections([]);
+                setIsRevealed(false);
+              }}
+            >
+              All cards
+            </button>
+          )}
+          </div>
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
               <div className="font-mono text-[9px] tracking-[.8px] text-[#8a8e84]">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
-              <h2 className="mt-2 text-[17px] font-medium">{mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{currentIndex + 1} of {flashcards.length}</b></h2>
+              <h2 className="mt-2 text-[17px] font-medium">{isRevisitMode ? 'Revisit' : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{deckPosition + 1} of {studyDeck.length}</b></h2>
             </div>
-            <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-[#adb0a5]" aria-label={`Card ${currentIndex + 1} of ${flashcards.length}`}>
-              <span className="text-[20px] text-green">{String(currentIndex + 1).padStart(2, '0')}</span>
+            <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-[#adb0a5]" aria-label={`Card ${deckPosition + 1} of ${studyDeck.length}`}>
+              <span className="text-[20px] text-green">{String(deckPosition + 1).padStart(2, '0')}</span>
               <span className="text-[#d0d1c8]">/</span>
-              <span>{String(flashcards.length).padStart(2, '0')}</span>
+              <span>{String(studyDeck.length).padStart(2, '0')}</span>
             </div>
           </div>
 
