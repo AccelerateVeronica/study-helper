@@ -402,7 +402,7 @@ export default function App() {
           {mode === 'flashcards' ? (
             <>
               <div className="mt-[25px] flex items-center justify-center gap-[15px] max-[720px]:mt-[22px] max-[720px]:gap-2">
-                <button className="flex h-[49px] min-w-[185px] cursor-pointer items-center gap-[10px] border border-[#e3c9c0] bg-transparent px-[13px] text-[11px] text-[#a55847] transition-colors hover:enabled:bg-[#f9ebe6] disabled:cursor-not-allowed disabled:opacity-[.43] max-[720px]:h-[46px] max-[720px]:min-w-0 max-[720px]:flex-1 max-[720px]:justify-center max-[720px]:gap-[7px] max-[720px]:px-[9px] max-[720px]:text-[10px]" onClick={() => moveCard('practice')} disabled={!isRevealed}>
+                <button className="flex h-[49px] min-w-[185px] cursor-pointer items-center gap-[10px] border border-[#e3c9c0] bg-transparent px-[13px] text-[11px] text-[#a55847] transition-colors hover:bg-[#f9ebe6] max-[720px]:h-[46px] max-[720px]:min-w-0 max-[720px]:flex-1 max-[720px]:justify-center max-[720px]:gap-[7px] max-[720px]:px-[9px] max-[720px]:text-[10px]" onClick={() => moveCard('practice')}>
                   <span className="grid size-[26px] place-items-center bg-[#f2e8e3] max-[720px]:size-[23px]"><RotateCcw size={16} /></span>
                   <span>Needs practice</span>
                   <span className="ml-auto font-mono text-[10px] text-[#a8a99f] max-[720px]:hidden">←</span>
