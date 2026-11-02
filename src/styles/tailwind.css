@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #242d26;
+  --color-muted: #898e85;
+  --color-green: #2d654a;
+  --color-green-dark: #234f3a;
+  --color-coral: #d97159;
+  --color-line: #e7e5dc;
+  --color-paper: #fffefa;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
+}
+
+@layer base {
+  :root {
+    color: var(--color-ink);
+    background: #f6f5ef;
+    font-family: 'DM Sans', sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    font-weight: 400;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid var(--color-coral);
+    outline-offset: 3px;
+  }
+}
+
+.brand-mark::before,
+.brand-mark::after,
+.brand-mark span {
+  content: '';
+  position: absolute;
+  display: block;
+  width: 1px;
+  height: 19px;
+  background: var(--color-green);
+}
+
+.brand-mark::before { transform: rotate(0deg); }
+.brand-mark::after { transform: rotate(60deg); }
+.brand-mark span { transform: rotate(120deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
