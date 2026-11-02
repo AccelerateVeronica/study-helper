@@ -155,13 +155,13 @@ export default function App() {
         </div>
       </header>
 
-      <section className="mx-auto my-[68px] mb-[74px] grid max-w-[1100px] grid-cols-[minmax(210px,.75fr)_minmax(470px,1.4fr)] items-start gap-[clamp(56px,10.2vw,154px)] min-[1400px]:mt-[82px] max-[960px]:grid-cols-[190px_minmax(420px,1fr)] max-[960px]:gap-[45px] max-[720px]:my-[34px] max-[720px]:mb-[48px] max-[720px]:flex max-[720px]:flex-col max-[720px]:gap-[28px]" id="study">
-        <aside className="pt-[21px] max-[720px]:grid max-[720px]:w-full max-[720px]:grid-cols-[1fr_auto] max-[720px]:items-start max-[720px]:pt-0" aria-label="Study progress">
+      <section className="mx-auto my-[68px] mb-[74px] grid max-w-[1100px] grid-cols-[minmax(210px,.75fr)_minmax(470px,1.4fr)] items-start gap-[clamp(56px,10.2vw,154px)] min-[1400px]:mt-[82px] max-[960px]:grid-cols-[190px_minmax(420px,1fr)] max-[960px]:gap-[45px] max-[720px]:my-[34px] max-[720px]:mb-[48px] max-[720px]:flex max-[720px]:flex-col max-[720px]:gap-[24px]" id="study">
+        <aside className="pt-[21px] max-[720px]:grid max-[720px]:w-full max-[720px]:grid-cols-1 max-[720px]:items-start max-[720px]:pt-0" aria-label="Study progress">
           <div className="flex items-center gap-[9px] whitespace-nowrap font-mono text-[9px] tracking-[.8px] text-[#82877d] max-[720px]:col-span-full"><span className="inline-block h-px w-5 bg-coral" /> YOUR STUDY DESK</div>
-          <h1 className="mb-[14px] mt-[28px] font-display text-[clamp(39px,4vw,52px)] font-semibold leading-[1.09] tracking-[-.7px] max-[960px]:text-[43px] max-[720px]:mb-0 max-[720px]:mt-[17px] max-[720px]:text-[34px] max-[720px]:leading-[1.12]">A little<br className="max-[720px]:hidden" />closer to<br className="max-[720px]:hidden" /><em className="font-semibold text-green">knowing.</em></h1>
+          <h1 className="mb-[14px] mt-[28px] font-display text-[clamp(39px,4vw,52px)] font-semibold leading-[1.09] tracking-[-.7px] max-[960px]:text-[43px] max-[720px]:col-span-full max-[720px]:mb-0 max-[720px]:mt-[15px] max-[720px]:text-[30px] max-[720px]:leading-[1.15]">A little{' '}<br className="max-[720px]:hidden" />closer to{' '}<br className="max-[720px]:hidden" /> <em className="font-semibold text-green">knowing.</em></h1>
           <p className="m-0 text-[13px] leading-[1.7] text-muted max-[720px]:hidden">Small steps make<br />strong memories.</p>
 
-          <div className="mt-[60px] border-t border-line pt-[17px] max-[720px]:ml-[15px] max-[720px]:mt-[11px] max-[720px]:w-[165px] max-[720px]:pt-[11px] max-[380px]:ml-[6px] max-[380px]:w-[145px]">
+          <div className="mt-[60px] border-t border-line pt-[17px] max-[720px]:col-span-full max-[720px]:ml-0 max-[720px]:mt-4 max-[720px]:w-full max-[720px]:pt-3">
             <div className="flex justify-between font-mono text-[9px] tracking-[.8px] text-[#70766c] max-[720px]:text-[8px]">
               <span>SESSION PROGRESS</span>
               <span className="text-green">{Object.keys(review).length}<span className="text-[#9c9e96]"> / {flashcards.length}</span></span>
@@ -169,7 +169,7 @@ export default function App() {
             <div className="mt-[13px] h-1 overflow-hidden bg-[#e7e7dd]" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
               <span className="block h-full bg-green transition-[width] duration-300" style={{ width: `${progress}%` }} />
             </div>
-            <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-[#757b71] max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-3 max-[720px]:text-[9px] max-[380px]:gap-[7px] max-[380px]:text-[8px]">
+            <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-[#757b71] max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-4 max-[720px]:text-[10px] max-[380px]:gap-3 max-[380px]:text-[9px]">
               <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><Check className="text-green max-[720px]:w-3" size={14} /> {learnedCount} learned</span>
               <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><RotateCcw className="text-green max-[720px]:w-3" size={13} /> {practiceCount} to revisit</span>
             </div>
@@ -243,7 +243,7 @@ export default function App() {
                         : isSelected && !isCorrectChoice ? 'border-coral bg-coral text-white' : '';
                       return (
                         <button
-                          className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[39px] ${choiceClass}`}
+                          className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[44px] ${choiceClass}`}
                           key={choice}
                           onClick={() => selectQuizChoice(choice)}
                           disabled={quizFinished}
@@ -284,7 +284,7 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="group" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => (
                       <button
-                        className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] max-[720px]:min-h-[39px] ${selectedChoices.includes(choice) ? 'border-green bg-[#f1f5ee] text-green-dark' : ''}`}
+                        className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] max-[720px]:min-h-[44px] ${selectedChoices.includes(choice) ? 'border-green bg-[#f1f5ee] text-green-dark' : ''}`}
                         key={choice}
                         onClick={() => selectFlashcardChoice(choice)}
                         aria-pressed={selectedChoices.includes(choice)}
