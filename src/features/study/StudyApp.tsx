@@ -36,6 +36,7 @@ export default function App() {
   const [isRevealed, setIsRevealed] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStart = useRef<number | null>(null);
+  const modeTabs = useRef<Record<StudyMode, HTMLButtonElement | null>>({ flashcards: null, quiz: null });
   const activeCard = flashcards[currentIndex];
   const quizFinished = activeCard.answers.length === 1
     ? quizSelections.length > 0
@@ -73,6 +74,23 @@ export default function App() {
     setStudy((current) => ({ ...current, mode: nextMode }));
     setQuizSelections([]);
     setIsRevealed(false);
+  }
+
+  function onModeKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    let nextMode: StudyMode;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      nextMode = mode === 'flashcards' ? 'quiz' : 'flashcards';
+    } else if (event.key === 'Home') {
+      nextMode = 'flashcards';
+    } else if (event.key === 'End') {
+      nextMode = 'quiz';
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (nextMode !== mode) changeMode(nextMode);
+    modeTabs.current[nextMode]?.focus();
   }
 
   function selectQuizChoice(choice: string) {
@@ -189,14 +207,15 @@ export default function App() {
         </aside>
 
         <section className="w-full max-w-[570px] max-[720px]:max-w-none" aria-label="Flashcard study area">
-          <div className="mb-5 flex w-fit gap-[3px] bg-[#eae9e1] p-[3px] max-[720px]:mb-[17px]" role="tablist" aria-label="Study mode">
-            <button role="tab" aria-selected={mode === 'flashcards'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('flashcards')}>
+          <div className="mb-5 flex w-fit gap-[3px] bg-[#eae9e1] p-[3px] max-[720px]:mb-[17px]" role="tablist" aria-label="Study mode" onKeyDown={onModeKeyDown}>
+            <button ref={(tab) => { modeTabs.current.flashcards = tab; }} id="flashcards-tab" role="tab" aria-controls="study-mode-panel" aria-selected={mode === 'flashcards'} tabIndex={mode === 'flashcards' ? 0 : -1} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('flashcards')}>
               <Layers size={15} /> Flashcards
             </button>
-            <button role="tab" aria-selected={mode === 'quiz'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'quiz' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('quiz')}>
+            <button ref={(tab) => { modeTabs.current.quiz = tab; }} id="quiz-tab" role="tab" aria-controls="study-mode-panel" aria-selected={mode === 'quiz'} tabIndex={mode === 'quiz' ? 0 : -1} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'quiz' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('quiz')}>
               <ListChecks size={15} /> Quiz
             </button>
           </div>
+          <div id="study-mode-panel" role="tabpanel" aria-labelledby={`${mode}-tab`} tabIndex={0}>
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
               <div className="font-mono text-[9px] tracking-[.8px] text-[#8a8e84]">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
@@ -356,6 +375,7 @@ export default function App() {
               }}>Skip</button>
             </div>
           )}
+          </div>
         </section>
       </section>
 
