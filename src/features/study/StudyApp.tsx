@@ -32,7 +32,6 @@ function readSavedStudy(): SavedStudy {
 export default function App() {
   const [study, setStudy] = useState(readSavedStudy);
   const { currentIndex, review, mode } = study;
-  const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [quizSelections, setQuizSelections] = useState<string[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -42,9 +41,14 @@ export default function App() {
     ? quizSelections.length > 0
     : activeCard.answers.every((answer) => quizSelections.includes(answer))
       && quizSelections.every((choice) => activeCard.answers.includes(choice));
-  const flashcardCorrect = activeCard.answers.every((answer) => selectedChoices.includes(answer))
-    && selectedChoices.every((choice) => activeCard.answers.includes(choice));
-
+  const quizAnswerCorrect = quizSelections.length === activeCard.answers.length
+    && activeCard.answers.every((answer) => quizSelections.includes(answer));
+  const quizHasIncorrectChoice = quizSelections.some((choice) => !activeCard.answers.includes(choice));
+  const quizFeedbackTone = quizAnswerCorrect
+    ? 'border-green bg-[#f0f4ed] text-green-dark'
+    : quizHasIncorrectChoice || activeCard.answers.length === 1
+      ? 'border-coral bg-[#fbf3ef] text-[#935342]'
+      : 'border-[#d9d9cf] bg-[#f4f3ec] text-[#697066]';
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(study));
   }, [study]);
@@ -55,7 +59,6 @@ export default function App() {
 
   function advanceCard() {
     setStudy((current) => ({ ...current, currentIndex: (current.currentIndex + 1) % flashcards.length }));
-    setSelectedChoices([]);
     setQuizSelections([]);
     setIsRevealed(false);
     setDragOffset(0);
@@ -68,15 +71,8 @@ export default function App() {
 
   function changeMode(nextMode: StudyMode) {
     setStudy((current) => ({ ...current, mode: nextMode }));
-    setSelectedChoices([]);
     setQuizSelections([]);
     setIsRevealed(false);
-  }
-
-  function selectFlashcardChoice(choice: string) {
-    setSelectedChoices((current) => activeCard.answers.length === 1
-      ? [choice]
-      : current.includes(choice) ? current.filter((selected) => selected !== choice) : [...current, choice]);
   }
 
   function selectQuizChoice(choice: string) {
@@ -105,9 +101,16 @@ export default function App() {
 
   function resetSession() {
     setStudy((current) => ({ currentIndex: 0, review: {}, mode: current.mode }));
-    setSelectedChoices([]);
     setQuizSelections([]);
     setIsRevealed(false);
+  }
+
+  function revealFlashcard(event?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) {
+    if (mode !== 'flashcards' || isRevealed) return;
+    if (event?.target instanceof HTMLElement && event.target.closest('button')) return;
+    if (event && 'key' in event && event.key !== 'Enter' && event.key !== ' ') return;
+    if (event && 'key' in event) event.preventDefault();
+    setIsRevealed(true);
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLElement>) {
@@ -210,12 +213,17 @@ export default function App() {
             <div className="absolute inset-[9px_-8px_-8px_8px] rounded-[6px] border border-[#ebe9e0] bg-[#f1efe6]" />
             <div className="absolute inset-[4px_-4px_-4px_4px] rounded-[6px] border border-[#ebe9e0] bg-[#f8f7f1]" />
             <article
-              className="relative flex min-h-[405px] cursor-grab select-none flex-col rounded-[6px] border border-[#ece9df] bg-paper px-[29px] pb-[21px] pt-6 transition-[transform,box-shadow] duration-200 active:cursor-grabbing max-[960px]:px-[23px] max-[720px]:min-h-[410px] max-[720px]:px-[19px] max-[720px]:pb-[17px] max-[720px]:pt-[19px] max-[380px]:px-[15px]"
+              className={`relative flex min-h-[405px] select-none flex-col rounded-[6px] border border-[#ece9df] bg-paper px-[29px] pb-[21px] pt-6 transition-[transform,box-shadow] duration-200 max-[960px]:px-[23px] max-[720px]:min-h-[410px] max-[720px]:px-[19px] max-[720px]:pb-[17px] max-[720px]:pt-[19px] max-[380px]:px-[15px] ${mode === 'flashcards' && !isRevealed ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}
               style={{ transform: `translateX(${dragOffset}px) rotate(${dragOffset / 24}deg)` }}
+              onClick={revealFlashcard}
+              onKeyDown={revealFlashcard}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
+              role={mode === 'flashcards' && !isRevealed ? 'button' : undefined}
+              tabIndex={mode === 'flashcards' && !isRevealed ? 0 : undefined}
+              aria-label={mode === 'flashcards' && !isRevealed ? 'Reveal answer' : undefined}
               aria-live="polite"
             >
               <div className="flex items-center justify-between border-b border-[#efeee8] pb-[17px]">
@@ -226,7 +234,7 @@ export default function App() {
                 <div className="flex flex-1 flex-col">
                   <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
                   <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
-                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="group" aria-label="Answer choices">
+                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => {
                       const isSelected = quizSelections.includes(choice);
                       const isCorrectChoice = activeCard.answers.includes(choice);
@@ -258,7 +266,7 @@ export default function App() {
                     })}
                   </div>
                   {quizSelections.length > 0 && (
-                    <div className={`mt-3 flex flex-col gap-[5px] border-l-2 border-coral bg-[#fbf3ef] px-[10px] py-[9px] text-[10px] leading-[1.5] text-[#935342] ${quizFinished ? 'border-green bg-[#f0f4ed]' : ''}`} aria-live="polite">
+                    <div className={`mt-3 flex flex-col gap-[5px] border-l-2 px-[10px] py-[9px] text-[10px] leading-[1.5] ${quizFeedbackTone}`} aria-live="polite">
                       {activeCard.answers.length === 1 ? (
                         <>
                           <strong className="font-semibold">{quizSelections[0] === activeCard.answers[0] ? 'Correct' : 'Not quite'}</strong>
@@ -283,34 +291,29 @@ export default function App() {
                   {activeCard.answers.length > 1 && <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">SELECT ALL THAT APPLY</div>}
                   <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="group" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => (
-                      <button
-                        className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] max-[720px]:min-h-[44px] ${selectedChoices.includes(choice) ? 'border-green bg-[#f1f5ee] text-green-dark' : ''}`}
+                      <div
+                        className="relative flex min-h-[42px] items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 text-left text-[11px] max-[720px]:min-h-[44px]"
                         key={choice}
-                        onClick={() => selectFlashcardChoice(choice)}
-                        aria-pressed={selectedChoices.includes(choice)}
+                        role="listitem"
                       >
-                        <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80] ${selectedChoices.includes(choice) ? 'border-green bg-green text-white' : ''}`}>{String.fromCharCode(65 + index)}</span>
+                        <span className="grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80]">{String.fromCharCode(65 + index)}</span>
                         <span>{choice}</span>
-                        {selectedChoices.includes(choice) && <span className="absolute right-[10px] size-[6px] rounded-full bg-green" />}
-                      </button>
+                      </div>
                     ))}
                   </div>
                   <div className="mt-auto flex items-center justify-between pt-[19px]">
-                    <span className="text-[10px] text-[#969a91]">{selectedChoices.length > 0 ? 'Ready when you are' : 'Choose your answer'}</span>
-                    <button className="inline-flex cursor-pointer items-center gap-[9px] border-0 bg-green px-[13px] py-[10px] text-[10px] text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-40" onClick={() => setIsRevealed(true)} disabled={selectedChoices.length === 0}>
-                      Check answer <ArrowRight size={15} />
-                    </button>
+                    <span className="text-[10px] text-[#969a91]">Tap card to reveal answer</span>
+                    <ArrowRight className="text-green" size={15} />
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col pt-6">
-                  <span className={`grid size-[34px] place-items-center rounded-full ${flashcardCorrect ? 'bg-[#e9f0e5] text-green' : 'bg-[#f8ece8] text-[#c8624e]'}`}>
-                    {flashcardCorrect ? <Check size={19} /> : <X size={19} />}
+                  <span className="grid size-[34px] place-items-center rounded-full bg-[#e9f0e5] text-green">
+                    <Check size={19} />
                   </span>
-                  <div className="mt-[13px] font-mono text-[9px] tracking-[.8px] text-[#8e9388]">{flashcardCorrect ? 'YOU GOT IT' : 'THE CORRECT ANSWER'}</div>
+                  <div className="mt-[13px] font-mono text-[9px] tracking-[.8px] text-[#8e9388]">THE CORRECT ANSWER</div>
                   <h3 className="my-2 font-display text-[28px] font-semibold">{activeCard.answers.join(', ')}</h3>
                   {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-[#72786f]">{activeCard.explanation}</p>}
-                  {!flashcardCorrect && <div className="mt-3 text-[10px] text-[#969a91]">Your answer <span className="ml-[5px] text-[#c8624e]">{selectedChoices.join(', ') || 'No answer selected'}</span></div>}
                   <button className="mt-3 flex w-fit cursor-pointer items-center gap-[6px] border-0 bg-transparent p-0 text-[10px] text-green" onClick={() => setIsRevealed(false)}>
                     <ArrowLeft size={14} /> Back to question
                   </button>
