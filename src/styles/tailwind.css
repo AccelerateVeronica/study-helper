@@ -3,10 +3,11 @@
 
 @theme {
   --color-ink: #242d26;
-  --color-muted: #898e85;
+  --color-muted: #62695f;
   --color-green: #2d654a;
   --color-green-dark: #234f3a;
   --color-coral: #d97159;
+  --color-coral-dark: #a55847;
   --color-line: #e7e5dc;
   --color-paper: #fffefa;
   --font-display: 'Playfair Display', Georgia, serif;

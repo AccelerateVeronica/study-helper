@@ -160,19 +160,19 @@ export default function App() {
 
       <section className="mx-auto my-[68px] mb-[74px] grid max-w-[1100px] grid-cols-[minmax(210px,.75fr)_minmax(470px,1.4fr)] items-start gap-[clamp(56px,10.2vw,154px)] min-[1400px]:mt-[82px] max-[960px]:grid-cols-[190px_minmax(420px,1fr)] max-[960px]:gap-[45px] max-[720px]:my-[34px] max-[720px]:mb-[48px] max-[720px]:flex max-[720px]:flex-col max-[720px]:gap-[24px]" id="study">
         <aside className="pt-[21px] max-[720px]:grid max-[720px]:w-full max-[720px]:grid-cols-1 max-[720px]:items-start max-[720px]:pt-0" aria-label="Study progress">
-          <div className="flex items-center gap-[9px] whitespace-nowrap font-mono text-[9px] tracking-[.8px] text-[#82877d] max-[720px]:col-span-full"><span className="inline-block h-px w-5 bg-coral" /> YOUR STUDY DESK</div>
+          <div className="flex items-center gap-[9px] whitespace-nowrap font-mono text-[9px] tracking-[.8px] text-muted max-[720px]:col-span-full"><span className="inline-block h-px w-5 bg-coral" /> YOUR STUDY DESK</div>
           <h1 className="mb-[14px] mt-[28px] font-display text-[clamp(39px,4vw,52px)] font-semibold leading-[1.09] tracking-[-.7px] max-[960px]:text-[43px] max-[720px]:col-span-full max-[720px]:mb-0 max-[720px]:mt-[15px] max-[720px]:text-[30px] max-[720px]:leading-[1.15]">A little{' '}<br className="max-[720px]:hidden" />closer to{' '}<br className="max-[720px]:hidden" /> <em className="font-semibold text-green">knowing.</em></h1>
           <p className="m-0 text-[13px] leading-[1.7] text-muted max-[720px]:hidden">Small steps make<br />strong memories.</p>
 
           <div className="mt-[60px] border-t border-line pt-[17px] max-[720px]:col-span-full max-[720px]:ml-0 max-[720px]:mt-4 max-[720px]:w-full max-[720px]:pt-3">
-            <div className="flex justify-between font-mono text-[9px] tracking-[.8px] text-[#70766c] max-[720px]:text-[8px]">
+            <div className="flex justify-between font-mono text-[9px] tracking-[.8px] text-muted max-[720px]:text-[8px]">
               <span>SESSION PROGRESS</span>
-              <span className="text-green">{Object.keys(review).length}<span className="text-[#9c9e96]"> / {flashcards.length}</span></span>
+              <span className="text-green">{Object.keys(review).length}<span className="text-muted"> / {flashcards.length}</span></span>
             </div>
             <div className="mt-[13px] h-1 overflow-hidden bg-[#e7e7dd]" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
               <span className="block h-full bg-green transition-[width] duration-300" style={{ width: `${progress}%` }} />
             </div>
-            <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-[#757b71] max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-4 max-[720px]:text-[10px] max-[380px]:gap-3 max-[380px]:text-[9px]">
+            <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-muted max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-4 max-[720px]:text-[10px] max-[380px]:gap-3 max-[380px]:text-[9px]">
               <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><Check className="text-green max-[720px]:w-3" size={14} /> {learnedCount} learned</span>
               <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><RotateCcw className="text-green max-[720px]:w-3" size={13} /> {practiceCount} to revisit</span>
             </div>
@@ -182,29 +182,29 @@ export default function App() {
             <div className="grid size-[31px] place-items-center bg-[#e9eee4] text-green"><Sparkles size={16} /></div>
             <div className="flex flex-1 flex-col gap-1">
               <span className="text-[11px] font-semibold">GH-300 exam prep</span>
-              <span className="text-[10px] text-[#8d9189]">Practice question bank</span>
+              <span className="text-[10px] text-muted">Practice question bank</span>
             </div>
-            <span className="self-start font-mono text-[10px] text-[#8c9288]">{String(flashcards.length).padStart(2, '0')}</span>
+            <span className="self-start font-mono text-[10px] text-muted">{String(flashcards.length).padStart(2, '0')}</span>
           </div>
         </aside>
 
         <section className="w-full max-w-[570px] max-[720px]:max-w-none" aria-label="Flashcard study area">
           <div className="mb-5 flex w-fit gap-[3px] bg-[#eae9e1] p-[3px] max-[720px]:mb-[17px]" role="tablist" aria-label="Study mode">
-            <button role="tab" aria-selected={mode === 'flashcards'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('flashcards')}>
+            <button role="tab" aria-selected={mode === 'flashcards'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : 'text-muted'}`} onClick={() => changeMode('flashcards')}>
               <Layers size={15} /> Flashcards
             </button>
-            <button role="tab" aria-selected={mode === 'quiz'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] text-[#757b71] ${mode === 'quiz' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : ''}`} onClick={() => changeMode('quiz')}>
+            <button role="tab" aria-selected={mode === 'quiz'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] ${mode === 'quiz' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : 'text-muted'}`} onClick={() => changeMode('quiz')}>
               <ListChecks size={15} /> Quiz
             </button>
           </div>
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
-              <div className="font-mono text-[9px] tracking-[.8px] text-[#8a8e84]">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
-              <h2 className="mt-2 text-[17px] font-medium">{mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{currentIndex + 1} of {flashcards.length}</b></h2>
+              <div className="font-mono text-[9px] tracking-[.8px] text-muted">CERTIFICATION REVIEW <span className="px-1 text-muted">/</span> {activeCard.subject.toUpperCase()}</div>
+              <h2 className="mt-2 text-[17px] font-medium">{mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-muted">·</span> <b className="text-[13px] font-normal text-muted">{currentIndex + 1} of {flashcards.length}</b></h2>
             </div>
-            <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-[#adb0a5]" aria-label={`Card ${currentIndex + 1} of ${flashcards.length}`}>
+            <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-muted" aria-label={`Card ${currentIndex + 1} of ${flashcards.length}`}>
               <span className="text-[20px] text-green">{String(currentIndex + 1).padStart(2, '0')}</span>
-              <span className="text-[#d0d1c8]">/</span>
+              <span className="text-muted">/</span>
               <span>{String(flashcards.length).padStart(2, '0')}</span>
             </div>
           </div>
@@ -228,12 +228,12 @@ export default function App() {
             >
               <div className="flex items-center justify-between border-b border-[#efeee8] pb-[17px]">
                 <span className="font-mono text-[9px] tracking-[.8px] text-green">{mode === 'quiz' ? 'QUESTION' : isRevealed ? 'THE ANSWER' : 'QUESTION'}</span>
-                <span className="bg-[#f4f3ec] px-[9px] py-[5px] text-[9px] text-[#777e72]">{activeCard.subject}</span>
+                <span className="bg-[#f4f3ec] px-[9px] py-[5px] text-[9px] text-muted">{activeCard.subject}</span>
               </div>
               {mode === 'quiz' ? (
                 <div className="flex flex-1 flex-col">
                   <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
-                  <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
+                  <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-muted">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
                   <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => {
                       const isSelected = quizSelections.includes(choice);
@@ -248,7 +248,7 @@ export default function App() {
                           : '';
                       const letterClass = isSelected && isCorrectChoice || isSingleAnswered && isCorrectChoice
                         ? 'border-green bg-green text-white'
-                        : isSelected && !isCorrectChoice ? 'border-coral bg-coral text-white' : '';
+                        : isSelected && !isCorrectChoice ? 'border-coral-dark bg-coral-dark text-white' : '';
                       return (
                         <button
                           className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[44px] ${choiceClass}`}
@@ -257,7 +257,7 @@ export default function App() {
                           disabled={quizFinished}
                           aria-pressed={isSelected}
                         >
-                          <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80] ${letterClass}`}>{String.fromCharCode(65 + index)}</span>
+                          <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] ${letterClass || 'text-muted'}`}>{String.fromCharCode(65 + index)}</span>
                           <span>{choice}</span>
                           {isSingleAnswered && isCorrectChoice && <Check className="absolute right-[10px]" size={14} />}
                           {isSelected && !isCorrectChoice && <X className="absolute right-[10px]" size={14} />}
@@ -270,12 +270,12 @@ export default function App() {
                       {activeCard.answers.length === 1 ? (
                         <>
                           <strong className="font-semibold">{quizSelections[0] === activeCard.answers[0] ? 'Correct' : 'Not quite'}</strong>
-                          <span className="text-[#72786f]">{activeCard.explanation}</span>
+                          <span className="text-muted">{activeCard.explanation}</span>
                         </>
                       ) : quizFinished ? (
                         <>
                           <strong className="font-semibold text-green">All correct</strong>
-                          <span className="text-[#72786f]">{activeCard.explanation}</span>
+                          <span className="text-muted">{activeCard.explanation}</span>
                         </>
                       ) : quizSelections.some((selected) => !activeCard.answers.includes(selected)) ? (
                         <strong className="font-semibold">That choice is not correct. Deselect it or try another.</strong>
@@ -288,7 +288,7 @@ export default function App() {
               ) : !isRevealed ? (
                 <div className="flex flex-1 flex-col">
                   <h3 className="mb-4 mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
-                  {activeCard.answers.length > 1 && <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">SELECT ALL THAT APPLY</div>}
+                  {activeCard.answers.length > 1 && <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-muted">SELECT ALL THAT APPLY</div>}
                   <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="group" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => (
                       <div
@@ -296,13 +296,13 @@ export default function App() {
                         key={choice}
                         role="listitem"
                       >
-                        <span className="grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80]">{String.fromCharCode(65 + index)}</span>
+                        <span className="grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-muted">{String.fromCharCode(65 + index)}</span>
                         <span>{choice}</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-auto flex items-center justify-between pt-[19px]">
-                    <span className="text-[10px] text-[#969a91]">Tap card to reveal answer</span>
+                    <span className="text-[10px] text-muted">Tap card to reveal answer</span>
                     <ArrowRight className="text-green" size={15} />
                   </div>
                 </div>
@@ -311,21 +311,21 @@ export default function App() {
                   <span className="grid size-[34px] place-items-center rounded-full bg-[#e9f0e5] text-green">
                     <Check size={19} />
                   </span>
-                  <div className="mt-[13px] font-mono text-[9px] tracking-[.8px] text-[#8e9388]">THE CORRECT ANSWER</div>
+                  <div className="mt-[13px] font-mono text-[9px] tracking-[.8px] text-muted">THE CORRECT ANSWER</div>
                   <h3 className="my-2 font-display text-[28px] font-semibold">{activeCard.answers.join(', ')}</h3>
-                  {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-[#72786f]">{activeCard.explanation}</p>}
+                  {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-muted">{activeCard.explanation}</p>}
                   <button className="mt-3 flex w-fit cursor-pointer items-center gap-[6px] border-0 bg-transparent p-0 text-[10px] text-green" onClick={() => setIsRevealed(false)}>
                     <ArrowLeft size={14} /> Back to question
                   </button>
                   <div className="mt-auto flex items-center justify-between border-t border-[#efeee8] pt-[19px]">
-                    <span className="text-[10px] text-[#969a91]">How well did it stick?</span>
-                    <span className="font-mono text-[8px] tracking-[.8px] text-[#adb0a5]">SWIPE TO SORT</span>
+                    <span className="text-[10px] text-muted">How well did it stick?</span>
+                    <span className="font-mono text-[8px] tracking-[.8px] text-muted">SWIPE TO SORT</span>
                   </div>
                 </div>
               )}
             </article>
             {mode === 'flashcards' && dragOffset > 24 && <div className="pointer-events-none absolute right-[22px] top-[72px] z-[3] flex rotate-[8deg] items-center gap-[5px] border-2 border-green px-[9px] py-[6px] font-mono text-[10px] tracking-[.8px] text-green">GOT IT <Check size={16} /></div>}
-            {mode === 'flashcards' && dragOffset < -24 && <div className="pointer-events-none absolute left-[22px] top-[72px] z-[3] flex -rotate-[8deg] items-center gap-[5px] border-2 border-coral px-[9px] py-[6px] font-mono text-[10px] tracking-[.8px] text-coral">REVISIT <RotateCcw size={14} /></div>}
+            {mode === 'flashcards' && dragOffset < -24 && <div className="pointer-events-none absolute left-[22px] top-[72px] z-[3] flex -rotate-[8deg] items-center gap-[5px] border-2 border-coral px-[9px] py-[6px] font-mono text-[10px] tracking-[.8px] text-coral-dark">REVISIT <RotateCcw size={14} /></div>}
           </div>
 
           {mode === 'flashcards' ? (
@@ -334,23 +334,23 @@ export default function App() {
                 <button className="flex h-[49px] min-w-[185px] cursor-pointer items-center gap-[10px] border border-[#e3c9c0] bg-transparent px-[13px] text-[11px] text-[#a55847] transition-colors hover:enabled:bg-[#f9ebe6] disabled:cursor-not-allowed disabled:opacity-[.43] max-[720px]:h-[46px] max-[720px]:min-w-0 max-[720px]:flex-1 max-[720px]:justify-center max-[720px]:gap-[7px] max-[720px]:px-[9px] max-[720px]:text-[10px]" onClick={() => moveCard('practice')} disabled={!isRevealed}>
                   <span className="grid size-[26px] place-items-center bg-[#f2e8e3] max-[720px]:size-[23px]"><RotateCcw size={16} /></span>
                   <span>Needs practice</span>
-                  <span className="ml-auto font-mono text-[10px] text-[#a8a99f] max-[720px]:hidden">←</span>
+                  <span className="ml-auto font-mono text-[10px] text-muted max-[720px]:hidden">←</span>
                 </button>
-                <span className="font-mono text-[8px] text-[#b0b2a8] max-[720px]:text-[7px]">OR</span>
+                <span className="font-mono text-[8px] text-muted max-[720px]:text-[7px]">OR</span>
                 <button className="flex h-[49px] min-w-[185px] cursor-pointer items-center gap-[10px] border border-[#cad7c7] bg-transparent px-[13px] text-[11px] text-green transition-colors hover:enabled:bg-[#eaf0e6] disabled:cursor-not-allowed disabled:opacity-[.43] max-[720px]:h-[46px] max-[720px]:min-w-0 max-[720px]:flex-1 max-[720px]:justify-center max-[720px]:gap-[7px] max-[720px]:px-[9px] max-[720px]:text-[10px]" onClick={() => moveCard('learned')} disabled={!isRevealed}>
                   <span className="grid size-[26px] place-items-center bg-[#e8eee5] max-[720px]:size-[23px]"><Check size={17} /></span>
                   <span>Got it</span>
-                  <span className="ml-auto font-mono text-[10px] text-[#a8a99f] max-[720px]:hidden">→</span>
+                  <span className="ml-auto font-mono text-[10px] text-muted max-[720px]:hidden">→</span>
                 </button>
               </div>
-              <div className="mt-[15px] text-center text-[10px] text-[#92968d] max-[720px]:text-[9px]"><span className="mr-1 align-[-1px] text-[15px] text-green">↔</span> Swipe the card to sort it after checking your answer</div>
+              <div className="mt-[15px] text-center text-[10px] text-muted max-[720px]:text-[9px]"><span className="mr-1 align-[-1px] text-[15px] text-green">↔</span> Swipe the card to sort it after checking your answer</div>
             </>
           ) : (
             <div className="mt-[25px] flex items-center justify-center gap-[15px] max-[720px]:mt-[19px]">
               <button className="inline-flex min-h-[46px] cursor-pointer items-center gap-[10px] border border-green bg-green px-4 text-[11px] text-white hover:enabled:bg-green-dark disabled:cursor-not-allowed disabled:border-[#d7d9d0] disabled:bg-[#e9e9e2] disabled:text-[#999d93] max-[720px]:flex-1 max-[720px]:justify-center" disabled={!quizFinished} onClick={advanceCard}>
                 Next question <ArrowRight size={15} />
               </button>
-              <button className="min-h-[42px] cursor-pointer border-0 bg-transparent px-[10px] text-[10px] text-[#878d82] underline decoration-1 underline-offset-[3px] disabled:cursor-default disabled:text-[#b7bab1]" disabled={quizFinished} onClick={() => {
+              <button className="min-h-[42px] cursor-pointer border-0 bg-transparent px-[10px] text-[10px] text-muted underline decoration-1 underline-offset-[3px] disabled:cursor-default disabled:text-[#b7bab1]" disabled={quizFinished} onClick={() => {
                 setStudy((current) => ({ ...current, review: { ...current.review, [activeCard.id]: 'practice' } }));
                 advanceCard();
               }}>Skip</button>
@@ -359,7 +359,7 @@ export default function App() {
         </section>
       </section>
 
-      <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-[#989b91] max-[720px]:min-h-[48px]">
+      <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-muted max-[720px]:min-h-[48px]">
         <span>MAKE ROOM FOR CURIOSITY</span>
         <span className="font-sans text-[10px] tracking-normal">One card at a time <span className="ml-[5px] text-coral">✳</span></span>
       </footer>
