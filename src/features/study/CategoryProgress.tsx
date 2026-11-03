@@ -60,7 +60,9 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
         <p className="mt-1 text-[13px] text-muted">Select a number to explore questions, or start a focused quiz.</p>
         <p className="mt-2 text-[12px] text-muted min-[721px]:hidden">Swipe the table to see all categories and quiz actions.</p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-line" role="region" aria-label="Category progress table" tabIndex={0}>
+      <div className="overflow-x-auto rounded-xl border border-line" role="region" aria-label="Category progress table" tabIndex={0} onKeyDown={(event) => {
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') event.stopPropagation();
+      }}>
         <table className="w-full min-w-[680px] border-collapse text-right text-[13px] tabular-nums">
           <caption className="sr-only">Study progress for categories T1 through T6. Reviewed includes learned and revisit cards; skipped is tracked separately.</caption>
           <thead className="border-b border-line bg-[#f6f8fa] text-muted">

@@ -35,6 +35,8 @@ export default function App() {
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStart = useRef<number | null>(null);
   const suppressCardClick = useRef(false);
+  const studyHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
   const activeCard = flashcards[currentIndex];
   const studyDeck = isRevisitMode
     ? revisitCardIds.flatMap((id) => {
@@ -50,6 +52,9 @@ export default function App() {
         ? flashcards.filter((card) => getCardCategory(card) === quizCategory)
       : flashcards;
   const deckPosition = studyDeck.findIndex((card) => card.id === activeCard.id);
+  useEffect(() => {
+    if (focusRequest > 0) studyHeadingRef.current?.focus();
+  }, [focusRequest]);
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(study));
   }, [study]);
@@ -105,11 +110,19 @@ export default function App() {
     setIsRevealed(false);
   }
 
+  function resetQuizSession() {
+    setQuizResults({});
+    setQuizSkippedIds([]);
+    setIsQuizComplete(false);
+  }
+
   function viewRevisitCard(index: number) {
     const ids = flashcards.filter((card) => review[card.id] === 'practice').map((card) => card.id);
     setRevisitCardIds(ids);
     setIsRevisitMode(true);
-    setStudy((current) => ({ ...current, currentIndex: index }));
+    resetQuizSession();
+    setStudy((current) => ({ ...current, currentIndex: index, mode: 'flashcards' }));
+    setFocusRequest((n) => n + 1);
     setQuizSelections([]);
     setQuizSubmitted(false);
     setIsRevealed(false);
@@ -122,7 +135,9 @@ export default function App() {
     setRevisitCardIds([]);
     setQuizCategory(null);
     setQuizOrderIds([]);
-    setStudy((current) => ({ ...current, currentIndex: index }));
+    resetQuizSession();
+    setStudy((current) => ({ ...current, currentIndex: index, mode: 'flashcards' }));
+    setFocusRequest((n) => n + 1);
     setQuizSelections([]);
     setQuizSubmitted(false);
     setIsRevealed(false);
@@ -254,12 +269,12 @@ export default function App() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (mode === 'flashcards' && event.key === 'ArrowRight' && isRevealed) moveCard('learned');
-      if (mode === 'flashcards' && event.key === 'ArrowLeft' && isRevealed) moveCard('practice');
+      if (mode === 'flashcards' && event.key === 'ArrowLeft') moveCard('practice');
       if (event.key === 'Escape') setIsRevealed(false);
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isRevealed, mode]);
+  });
 
   return (
     <main className="relative mx-auto min-h-screen max-w-[1320px] px-10 max-[960px]:px-6 max-[720px]:px-4">
@@ -370,7 +385,7 @@ export default function App() {
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
               <div className="font-mono text-[9px] tracking-[.8px] text-[#8a8e84]">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
-              <h2 className="mt-2 text-[17px] font-medium">{isRevisitMode ? 'Revisit' : quizCategory ? `${quizCategory} quiz` : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{deckPosition + 1} of {studyDeck.length}</b></h2>
+              <h2 ref={studyHeadingRef} tabIndex={-1} className="mt-2 text-[17px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green">{isRevisitMode ? 'Revisit' : quizCategory ? `${quizCategory} quiz` : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{deckPosition + 1} of {studyDeck.length}</b></h2>
             </div>
             <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-[#adb0a5]" aria-label={`Card ${deckPosition + 1} of ${studyDeck.length}`}>
               <span className="text-[20px] text-green">{String(deckPosition + 1).padStart(2, '0')}</span>
@@ -396,7 +411,9 @@ export default function App() {
               className={`relative flex min-h-[405px] select-none flex-col rounded-2xl border border-line bg-paper p-7 shadow-[0_4px_24px_#18252f06] transition-[transform,box-shadow] duration-200 max-[720px]:min-h-[410px] max-[720px]:p-5 ${mode === 'flashcards' ? 'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green' : ''}`}
               style={{ transform: `translateX(${dragOffset}px) rotate(${dragOffset / 24}deg)` }}
               onClick={toggleFlashcard}
-              onKeyDown={toggleFlashcard}
+              onKeyDown={(event) => {
+                if (event.target === event.currentTarget) toggleFlashcard(event);
+              }}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
@@ -404,9 +421,9 @@ export default function App() {
                 pointerStart.current = null;
                 setDragOffset(0);
               }}
-              role={mode === 'flashcards' ? 'button' : undefined}
-              tabIndex={mode === 'flashcards' ? 0 : undefined}
-              aria-label={mode === 'flashcards' ? isRevealed ? 'Back to question' : 'Reveal answer' : undefined}
+              role={mode === 'flashcards' && !isRevealed ? 'button' : undefined}
+              tabIndex={mode === 'flashcards' && !isRevealed ? 0 : undefined}
+              aria-label={mode === 'flashcards' && !isRevealed ? 'Reveal answer' : undefined}
               aria-live="polite"
             >
               <div className="flex items-center justify-between border-b border-[#efeee8] pb-[17px]">
@@ -454,9 +471,16 @@ export default function App() {
                     ))}
                   </div>
                   {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-[#72786f]">{activeCard.explanation}</p>}
-                  <span className="mt-4 flex w-fit items-center gap-2 text-[12px] text-green">
-                    <ArrowLeft size={14} /> Tap card to return to question
-                  </span>
+                  <button
+                    className="mt-4 flex min-h-11 w-fit cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[12px] text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsRevealed(false);
+                    }}
+                  >
+                    <ArrowLeft size={14} /> Back to question
+                  </button>
                   <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-5">
                     <span className="text-[12px] text-muted">How well did it stick?</span>
                     <span className="font-mono text-[9px] tracking-[.8px] text-muted">SWIPE TO SORT</span>

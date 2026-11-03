@@ -167,7 +167,7 @@ const sourceQuestions: SourceQuestion[] = [
   [`T5Q3. What is the purpose of content exclusion settings in GitHub Copilot Business? (Choose two.)`, [`To prevent GitHub Copilot from using specified files or paths as context for suggestions`, `To block all incoming network traffic to the IDE`, `To exclude sensitive data like secrets or credentials from being used as context`, `To permanently delete files from the repository`], [0, 2]],
   [`T5Q4. Which plan offers the ability to configure content exclusions at the organization level?`, [`GitHub Copilot Individual`, `GitHub Copilot Business and Enterprise`, `GitHub Copilot Chat only`, `All plans equally`], [1]],
   [`T5Q5. How long does it typically take for content exclusion changes to take effect after being configured?`, [`Immediately upon configuration`, `Up to 30 minutes`, `1-2 hours`, `24 hours`], [1]],
-  [`T5Q6. What safeguard should you implement when using GitHub Copilot with sensitive projects? (Choose two.)`, [`Enable duplication detection to catch publicly available code`, `Implement content exclusion for files containing credentials or sensitive data`, `Share all suggestions with the entire team immediately`, `Use the public code filter setting if available in your plan`], [0, 1]],
+  [`T5Q6. What safeguard should you implement when using GitHub Copilot with sensitive projects? (Choose two.)`, [`Enable duplication detection to catch publicly available code`, `Implement content exclusion for files containing credentials or sensitive data`, `Share all suggestions with the entire team immediately`, `Disable authentication for all Copilot users to simplify access`], [0, 1]],
 ];
 
 export const flashcards: Flashcard[] = sourceQuestions.map(([question, choices, correctIndexes], index) => ({
