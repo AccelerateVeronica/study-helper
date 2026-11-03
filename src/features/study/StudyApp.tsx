@@ -34,6 +34,7 @@ export default function App() {
   const [isQuizComplete, setIsQuizComplete] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStart = useRef<number | null>(null);
+  const suppressCardClick = useRef(false);
   const activeCard = flashcards[currentIndex];
   const studyDeck = isRevisitMode
     ? revisitCardIds.flatMap((id) => {
@@ -216,15 +217,20 @@ export default function App() {
     }
   }
 
-  function revealFlashcard(event?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) {
-    if (mode !== 'flashcards' || isRevealed) return;
-    if (event?.target instanceof HTMLElement && event.target.closest('button')) return;
-    if (event && 'key' in event && event.key !== 'Enter' && event.key !== ' ') return;
-    if (event && 'key' in event) event.preventDefault();
-    setIsRevealed(true);
+  function toggleFlashcard(event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) {
+    if (mode !== 'flashcards') return;
+    if ('key' in event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+    } else if (suppressCardClick.current) {
+      suppressCardClick.current = false;
+      return;
+    }
+    setIsRevealed((current) => !current);
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLElement>) {
+    suppressCardClick.current = false;
     if (!isRevealed || mode !== 'flashcards') return;
     if (event.target instanceof HTMLElement && event.target.closest('button')) return;
     pointerStart.current = event.clientX;
@@ -233,6 +239,7 @@ export default function App() {
 
   function onPointerMove(event: React.PointerEvent<HTMLElement>) {
     if (pointerStart.current === null) return;
+    if (Math.abs(event.clientX - pointerStart.current) > 10) suppressCardClick.current = true;
     setDragOffset(Math.max(-150, Math.min(150, event.clientX - pointerStart.current)));
   }
 
@@ -388,17 +395,20 @@ export default function App() {
             <div className="absolute inset-[9px_-8px_-8px_8px] rounded-[6px] border border-[#ebe9e0] bg-[#f1efe6]" />
             <div className="absolute inset-[4px_-4px_-4px_4px] rounded-[6px] border border-[#ebe9e0] bg-[#f8f7f1]" />
             <article
-              className={`relative flex min-h-[405px] select-none flex-col rounded-[6px] border border-[#ece9df] bg-paper px-[29px] pb-[21px] pt-6 transition-[transform,box-shadow] duration-200 max-[960px]:px-[23px] max-[720px]:min-h-[410px] max-[720px]:px-[19px] max-[720px]:pb-[17px] max-[720px]:pt-[19px] max-[380px]:px-[15px] ${mode === 'flashcards' && !isRevealed ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}
+              className={`relative flex min-h-[405px] select-none flex-col rounded-[6px] border border-[#ece9df] bg-paper px-[29px] pb-[21px] pt-6 transition-[transform,box-shadow] duration-200 max-[960px]:px-[23px] max-[720px]:min-h-[410px] max-[720px]:px-[19px] max-[720px]:pb-[17px] max-[720px]:pt-[19px] max-[380px]:px-[15px] ${mode === 'flashcards' ? 'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green' : ''}`}
               style={{ transform: `translateX(${dragOffset}px) rotate(${dragOffset / 24}deg)` }}
-              onClick={revealFlashcard}
-              onKeyDown={revealFlashcard}
+              onClick={toggleFlashcard}
+              onKeyDown={toggleFlashcard}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-              role={mode === 'flashcards' && !isRevealed ? 'button' : undefined}
-              tabIndex={mode === 'flashcards' && !isRevealed ? 0 : undefined}
-              aria-label={mode === 'flashcards' && !isRevealed ? 'Reveal answer' : undefined}
+              onPointerCancel={() => {
+                pointerStart.current = null;
+                setDragOffset(0);
+              }}
+              role={mode === 'flashcards' ? 'button' : undefined}
+              tabIndex={mode === 'flashcards' ? 0 : undefined}
+              aria-label={mode === 'flashcards' ? isRevealed ? 'Back to question' : 'Reveal answer' : undefined}
               aria-live="polite"
             >
               <div className="flex items-center justify-between border-b border-[#efeee8] pb-[17px]">
@@ -437,15 +447,16 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col pt-6">
-                  <span className="grid size-[34px] place-items-center rounded-full bg-[#e9f0e5] text-green">
-                    <Check size={19} />
-                  </span>
                   <div className="mt-[13px] font-mono text-[9px] tracking-[.8px] text-[#8e9388]">THE CORRECT ANSWER</div>
-                  <h3 className="my-2 font-display text-[28px] font-semibold">{activeCard.answers.join(', ')}</h3>
+                  <h3 className="my-2 font-display text-[28px] font-semibold">
+                    {activeCard.answers.map((answer) =>
+                      `${String.fromCharCode(65 + activeCard.choices.indexOf(answer))}. ${answer}`,
+                    ).join(', ')}
+                  </h3>
                   {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-[#72786f]">{activeCard.explanation}</p>}
-                  <button className="mt-3 flex w-fit cursor-pointer items-center gap-[6px] border-0 bg-transparent p-0 text-[10px] text-green" onClick={() => setIsRevealed(false)}>
-                    <ArrowLeft size={14} /> Back to question
-                  </button>
+                  <span className="mt-3 flex w-fit items-center gap-[6px] text-[10px] text-green">
+                    <ArrowLeft size={14} /> Tap card to return to question
+                  </span>
                   <div className="mt-auto flex items-center justify-between border-t border-[#efeee8] pt-[19px]">
                     <span className="text-[10px] text-[#969a91]">How well did it stick?</span>
                     <span className="font-mono text-[8px] tracking-[.8px] text-[#adb0a5]">SWIPE TO SORT</span>
