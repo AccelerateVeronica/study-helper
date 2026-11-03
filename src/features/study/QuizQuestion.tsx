@@ -28,16 +28,20 @@ export function QuizQuestion({ card, choices, selections, submitted, onSelectCho
         {choices.map((choice, index) => {
           const isSelected = selections.includes(choice);
           const isCorrectChoice = card.answers.includes(choice);
-          const choiceClass = isSelected
-            ? isCorrectChoice
-              ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
-              : 'border-[#e1b5a9] bg-[#fbefeb] text-[#a64e3c] hover:border-[#e1b5a9] hover:bg-[#fbefeb]'
-            : submitted && isCorrectChoice
-              ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
-              : '';
-          const letterClass = isSelected && isCorrectChoice || submitted && isCorrectChoice
-            ? 'border-green bg-green text-white'
-            : isSelected && !isCorrectChoice ? 'border-coral bg-coral text-white' : '';
+          const choiceClass = !submitted
+            ? isSelected ? 'border-[#9cad92] bg-[#f4f3ec] hover:bg-[#f4f3ec]' : ''
+            : isSelected
+              ? isCorrectChoice
+                ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
+                : 'border-[#e1b5a9] bg-[#fbefeb] text-[#a64e3c] hover:border-[#e1b5a9] hover:bg-[#fbefeb]'
+              : isCorrectChoice
+                ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
+                : '';
+          const letterClass = !submitted
+            ? isSelected ? 'border-[#697066] bg-[#697066] text-white' : ''
+            : isCorrectChoice
+              ? 'border-green bg-green text-white'
+              : isSelected ? 'border-coral bg-coral text-white' : '';
           return (
             <button
               className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[44px] ${choiceClass}`}
@@ -49,7 +53,7 @@ export function QuizQuestion({ card, choices, selections, submitted, onSelectCho
               <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80] ${letterClass}`}>{String.fromCharCode(65 + index)}</span>
               <span>{choice}</span>
               {submitted && isCorrectChoice && <Check className="absolute right-[10px]" size={14} />}
-              {isSelected && !isCorrectChoice && <X className="absolute right-[10px]" size={14} />}
+              {submitted && isSelected && !isCorrectChoice && <X className="absolute right-[10px]" size={14} />}
             </button>
           );
         })}

@@ -5,7 +5,7 @@ A React and TypeScript study app for the GH-300 question bank, with 121 multiple
 ## Study modes
 
 - **Flashcards:** choose one or more options, reveal the answer, then mark the card as learned or needing practice. Swipe right for learned and left for more practice.
-- **Quiz:** tap an answer to see immediate feedback. Questions can have one or multiple correct answers; there is no submit button.
+- **Quiz:** single-answer questions show feedback immediately. For multi-select questions, select your answers and click **Check answer** to submit. Selections stay neutral until submission; correctness feedback appears afterward and answers are locked.
 
 The app saves your current deck position, review progress, and selected mode in browser localStorage.
 
