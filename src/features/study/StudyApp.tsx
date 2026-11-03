@@ -1,58 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Layers, ListChecks, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Layers, ListChecks, RotateCcw, Sparkles } from 'lucide-react';
+import { CategoryProgress } from './CategoryProgress';
 import { flashcards } from './gh300Deck';
-
-type ReviewState = Record<string, 'learned' | 'practice'>;
-type StudyMode = 'flashcards' | 'quiz';
-type SavedStudy = { currentIndex: number; review: ReviewState; skipped: string[]; mode: StudyMode };
-type CategoryProgressMetric = 'total' | 'learned' | 'revisit' | 'skipped' | 'unseen' | 'reviewed';
-type SelectedCategoryProgress = { category: string; metric: CategoryProgressMetric };
-
-const categoryProgressMetricLabels: Record<CategoryProgressMetric, string> = {
-  total: 'all',
-  learned: 'learned',
-  revisit: 'to revisit',
-  skipped: 'skipped',
-  unseen: 'unseen',
-  reviewed: 'reviewed',
-};
-
-const STORAGE_KEY = 'fieldnotes-study-session';
-
-function shuffle<T>(items: readonly T[]): T[] {
-  const shuffled = [...items];
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-  }
-  return shuffled;
-}
-
-function readSavedStudy(): SavedStudy {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as Partial<SavedStudy>;
-      const review = Object.fromEntries(
-        Object.entries(parsed.review ?? {}).filter(([id, status]) =>
-          flashcards.some((card) => card.id === id) && (status === 'learned' || status === 'practice'),
-        ),
-      ) as ReviewState;
-      const skipped = Array.isArray(parsed.skipped)
-        ? [...new Set(parsed.skipped.filter((id) =>
-          typeof id === 'string' && flashcards.some((card) => card.id === id) && review[id] === undefined,
-        ))]
-        : [];
-      const currentIndex = typeof parsed.currentIndex === 'number' && Number.isInteger(parsed.currentIndex)
-        ? Math.max(0, Math.min(parsed.currentIndex, flashcards.length - 1))
-        : 0;
-      return { currentIndex, review, skipped, mode: parsed.mode === 'quiz' ? 'quiz' : 'flashcards' };
-    }
-  } catch {
-    // Start with a fresh session if saved browser data is unavailable.
-  }
-  return { currentIndex: 0, review: {}, skipped: [], mode: 'flashcards' };
-}
+import { QuizQuestion } from './QuizQuestion';
+import { getCardCategory, isAnswerCorrect, readSavedStudy, shuffle, STORAGE_KEY, type StudyMode } from './studySession';
 
 export default function App() {
   const [study, setStudy] = useState(readSavedStudy);
@@ -60,7 +11,6 @@ export default function App() {
   const [quizSelections, setQuizSelections] = useState<string[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
   const [isRevisitListOpen, setIsRevisitListOpen] = useState(false);
-  const [selectedCategoryProgress, setSelectedCategoryProgress] = useState<SelectedCategoryProgress | null>(null);
   const [isRevisitMode, setIsRevisitMode] = useState(false);
   const [revisitCardIds, setRevisitCardIds] = useState<string[]>([]);
   const [quizCategory, setQuizCategory] = useState<string | null>(null);
@@ -96,17 +46,9 @@ export default function App() {
         return card ? [card] : [];
       })
       : quizCategory
-        ? flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === quizCategory)
+        ? flashcards.filter((card) => getCardCategory(card) === quizCategory)
       : flashcards;
   const deckPosition = studyDeck.findIndex((card) => card.id === activeCard.id);
-  const quizAnswerCorrect = quizSelections.length === activeCard.answers.length
-    && activeCard.answers.every((answer) => quizSelections.includes(answer));
-  const quizHasIncorrectChoice = quizSelections.some((choice) => !activeCard.answers.includes(choice));
-  const quizFeedbackTone = quizAnswerCorrect
-    ? 'border-green bg-[#f0f4ed] text-green-dark'
-    : quizHasIncorrectChoice || activeCard.answers.length === 1
-      ? 'border-coral bg-[#fbf3ef] text-[#935342]'
-      : 'border-[#d9d9cf] bg-[#f4f3ec] text-[#697066]';
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(study));
   }, [study]);
@@ -120,36 +62,6 @@ export default function App() {
   const quizRemainingCount = Math.max(0, studyDeck.length - quizAttemptedCount);
   const quizCorrectCount = Object.values(quizResults).filter(Boolean).length;
   const activeQuizChoices = quizChoiceOrders[activeCard.id] ?? activeCard.choices;
-  const categoryProgress = Array.from({ length: 6 }, (_, index) => {
-    const category = `T${index + 1}`;
-    const cards = flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === category);
-    const learned = cards.filter((card) => review[card.id] === 'learned').length;
-    const revisit = cards.filter((card) => review[card.id] === 'practice').length;
-    const skippedCount = cards.filter((card) => skipped.includes(card.id)).length;
-    const reviewed = learned + revisit;
-    return {
-      category,
-      total: cards.length,
-      learned,
-      revisit,
-      skipped: skippedCount,
-      unseen: cards.length - reviewed - skippedCount,
-      percent: cards.length > 0 ? Math.round((reviewed / cards.length) * 100) : 0,
-    };
-  });
-  const selectedCategoryQuestions = selectedCategoryProgress
-    ? flashcards.flatMap((card, index) => {
-      const cardCategory = card.question.match(/^(T[1-6])Q\d+\./)?.[1];
-      const status = review[card.id];
-      const matchesMetric = selectedCategoryProgress.metric === 'total'
-        || (selectedCategoryProgress.metric === 'learned' && status === 'learned')
-        || (selectedCategoryProgress.metric === 'revisit' && status === 'practice')
-        || (selectedCategoryProgress.metric === 'skipped' && skipped.includes(card.id))
-        || (selectedCategoryProgress.metric === 'unseen' && !status && !skipped.includes(card.id))
-        || (selectedCategoryProgress.metric === 'reviewed' && status !== undefined);
-      return cardCategory === selectedCategoryProgress.category && matchesMetric ? [{ card, index }] : [];
-    })
-    : [];
 
   function advanceCard() {
     if (studyDeck.length === 0) return;
@@ -245,14 +157,13 @@ export default function App() {
 
   function startCategoryQuiz(category: string) {
     const categoryCards = flashcards.filter(
-      (card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === category,
+      (card) => getCardCategory(card) === category,
     );
     startQuiz(categoryCards, category);
   }
 
   function submitQuizAnswer(selections: string[]) {
-    const isCorrect = selections.length === activeCard.answers.length
-      && activeCard.answers.every((answer) => selections.includes(answer));
+    const isCorrect = isAnswerCorrect(activeCard, selections);
     setQuizSelections(selections);
     setQuizSubmitted(true);
     setQuizResults((current) => ({ ...current, [activeCard.id]: isCorrect }));
@@ -495,57 +406,14 @@ export default function App() {
                 <span className="bg-[#f4f3ec] px-[9px] py-[5px] text-[9px] text-[#777e72]">{activeCard.subject}</span>
               </div>
               {mode === 'quiz' ? (
-                <div className="flex flex-1 flex-col">
-                  <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
-                  <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
-                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
-                    {activeQuizChoices.map((choice, index) => {
-                      const isSelected = quizSelections.includes(choice);
-                      const isCorrectChoice = activeCard.answers.includes(choice);
-                      const choiceClass = isSelected
-                        ? isCorrectChoice
-                          ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
-                          : 'border-[#e1b5a9] bg-[#fbefeb] text-[#a64e3c] hover:border-[#e1b5a9] hover:bg-[#fbefeb]'
-                        : quizSubmitted && isCorrectChoice
-                          ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
-                          : '';
-                      const letterClass = isSelected && isCorrectChoice || quizSubmitted && isCorrectChoice
-                        ? 'border-green bg-green text-white'
-                        : isSelected && !isCorrectChoice ? 'border-coral bg-coral text-white' : '';
-                      return (
-                        <button
-                          className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[44px] ${choiceClass}`}
-                          key={choice}
-                          onClick={() => selectQuizChoice(choice)}
-                          disabled={quizSubmitted}
-                          aria-pressed={isSelected}
-                        >
-                          <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80] ${letterClass}`}>{String.fromCharCode(65 + index)}</span>
-                          <span>{choice}</span>
-                          {quizSubmitted && isCorrectChoice && <Check className="absolute right-[10px]" size={14} />}
-                          {isSelected && !isCorrectChoice && <X className="absolute right-[10px]" size={14} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {activeCard.answers.length > 1 && !quizSubmitted && (
-                    <button
-                      className="mt-3 min-h-[38px] w-fit cursor-pointer border border-green bg-green px-4 text-[10px] text-white hover:bg-green-dark disabled:cursor-not-allowed disabled:border-[#d7d9d0] disabled:bg-[#e9e9e2] disabled:text-[#999d93]"
-                      type="button"
-                      disabled={quizSelections.length === 0}
-                      onClick={() => submitQuizAnswer(quizSelections)}
-                    >
-                      Check answer
-                    </button>
-                  )}
-                  {quizSubmitted && (
-                    <div className={`mt-3 flex flex-col gap-[5px] border-l-2 px-[10px] py-[9px] text-[10px] leading-[1.5] ${quizFeedbackTone}`} aria-live="polite">
-                      <strong className="font-semibold">{quizAnswerCorrect ? 'Correct' : 'Not quite'}</strong>
-                      {!quizAnswerCorrect && <span>Correct answer: {activeCard.answers.join(', ')}</span>}
-                      {activeCard.explanation && <span className="text-[#72786f]">{activeCard.explanation}</span>}
-                    </div>
-                  )}
-                </div>
+                <QuizQuestion
+                  card={activeCard}
+                  choices={activeQuizChoices}
+                  selections={quizSelections}
+                  submitted={quizSubmitted}
+                  onSelectChoice={selectQuizChoice}
+                  onSubmit={() => submitQuizAnswer(quizSelections)}
+                />
               ) : !isRevealed ? (
                 <div className="flex flex-1 flex-col">
                   <h3 className="mb-4 mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
@@ -607,7 +475,7 @@ export default function App() {
                 type="button"
                 onClick={() => startQuiz(
                   quizCategory
-                    ? flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === quizCategory)
+                    ? flashcards.filter((card) => getCardCategory(card) === quizCategory)
                     : flashcards,
                   quizCategory,
                 )}
@@ -645,99 +513,12 @@ export default function App() {
         </section>
       </section>
 
-      <section className="mx-auto mb-10 max-w-[1100px] border-t border-line pt-5" aria-labelledby="category-progress-heading">
-        <h2 id="category-progress-heading" className="mb-4 text-[17px] font-medium">Progress by category</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse text-right text-[11px] tabular-nums">
-            <caption className="sr-only">Study progress for categories T1 through T6. Reviewed includes learned and revisit cards; skipped is tracked separately.</caption>
-            <thead className="border-b border-line text-[#70766c]">
-              <tr>
-                <th scope="col" className="px-2 py-3 text-left font-medium">Category</th>
-                <th scope="col" className="px-2 py-3 font-medium">Total</th>
-                <th scope="col" className="px-2 py-3 font-medium">Learned</th>
-                <th scope="col" className="px-2 py-3 font-medium">Revisit</th>
-                <th scope="col" className="px-2 py-3 font-medium">Skipped</th>
-                <th scope="col" className="px-2 py-3 font-medium">Unseen</th>
-                <th scope="col" className="px-2 py-3 font-medium">Reviewed</th>
-                <th scope="col" className="px-2 py-3 text-left font-medium">Quiz</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categoryProgress.map(({ category, total, learned, revisit, skipped: skippedCount, unseen, percent }) => {
-                const metrics: { metric: CategoryProgressMetric; count: number; text: string }[] = [
-                  { metric: 'total', count: total, text: String(total) },
-                  { metric: 'learned', count: learned, text: String(learned) },
-                  { metric: 'revisit', count: revisit, text: String(revisit) },
-                  { metric: 'skipped', count: skippedCount, text: String(skippedCount) },
-                  { metric: 'unseen', count: unseen, text: String(unseen) },
-                  { metric: 'reviewed', count: learned + revisit, text: `${percent}%` },
-                ];
-                return (
-                  <tr key={category} className="border-b border-line">
-                    <th scope="row" className="px-2 py-3 text-left font-mono font-medium">{category}</th>
-                    {metrics.map(({ metric, count, text }) => {
-                      const isSelected = selectedCategoryProgress?.category === category
-                        && selectedCategoryProgress.metric === metric;
-                      const metricLabel = categoryProgressMetricLabels[metric];
-                      return (
-                        <td className={`px-2 py-3 ${metric === 'learned' ? 'text-green-dark' : metric === 'revisit' ? 'text-[#a55847]' : metric === 'unseen' ? 'text-muted' : ''}`} key={metric}>
-                          <button
-                            className={`cursor-pointer border-0 bg-transparent p-0 text-inherit underline decoration-dotted underline-offset-2 hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green ${isSelected ? 'font-semibold text-green-dark' : ''}`}
-                            type="button"
-                            aria-label={`View ${count} ${metricLabel} question${count === 1 ? '' : 's'} in ${category}`}
-                            aria-expanded={isSelected}
-                            aria-controls="category-question-list"
-                            onClick={() => setSelectedCategoryProgress((current) =>
-                              current?.category === category && current.metric === metric ? null : { category, metric },
-                            )}
-                          >
-                            {text}
-                          </button>
-                        </td>
-                      );
-                    })}
-                    <td className="px-2 py-3 text-left">
-                      <button
-                        className="cursor-pointer border-0 bg-transparent p-0 text-[10px] text-green-dark underline decoration-dotted underline-offset-2 hover:text-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green disabled:cursor-not-allowed disabled:text-muted"
-                        type="button"
-                        disabled={total === 0}
-                        onClick={() => startCategoryQuiz(category)}
-                        aria-label={`Start quiz for ${category}`}
-                      >
-                        Start quiz
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {selectedCategoryProgress && (
-          <div id="category-question-list" className="mt-4 border-y border-line py-3" aria-labelledby="category-question-heading">
-            <h3 id="category-question-heading" className="mb-2 text-[12px] font-medium">
-              {selectedCategoryProgress.category} · {categoryProgressMetricLabels[selectedCategoryProgress.metric]} questions
-            </h3>
-            {selectedCategoryQuestions.length === 0 ? (
-              <p className="my-2 text-[11px] text-muted">No questions match this progress count yet.</p>
-            ) : (
-              <ul className="m-0 max-h-[280px] list-none overflow-y-auto p-0">
-                {selectedCategoryQuestions.map(({ card, index }) => (
-                  <li className="border-b border-line last:border-b-0" key={card.id}>
-                    <button
-                      className="w-full cursor-pointer border-0 bg-transparent px-2 py-3 text-left text-[11px] leading-[1.5] text-ink hover:bg-[#f5f5ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green"
-                      type="button"
-                      onClick={() => viewStudyCard(index)}
-                    >
-                      {card.question}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </section>
+      <CategoryProgress
+        review={review}
+        skipped={skipped}
+        onViewCard={viewStudyCard}
+        onStartQuiz={startCategoryQuiz}
+      />
 
       <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-[#989b91] max-[720px]:min-h-[48px]">
         <span>MAKE ROOM FOR CURIOSITY</span>

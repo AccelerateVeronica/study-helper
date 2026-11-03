@@ -16,4 +16,11 @@ npm install
 npm run dev
 ```
 
-Create a production build with `npm run build`. The GH-300 questions and answer keys are in [`src/gh300Deck.ts`](src/gh300Deck.ts).
+Create a production build with `npm run build`. The GH-300 questions and answer keys are in [`src/features/study/gh300Deck.ts`](src/features/study/gh300Deck.ts).
+
+## Code structure
+
+- [`StudyApp.tsx`](src/features/study/StudyApp.tsx) coordinates study navigation, quiz sessions, and flashcard interactions.
+- [`QuizQuestion.tsx`](src/features/study/QuizQuestion.tsx) renders quiz choices, answer submission, and feedback.
+- [`CategoryProgress.tsx`](src/features/study/CategoryProgress.tsx) owns category counts, question-list filtering, and category quiz actions.
+- [`studySession.ts`](src/features/study/studySession.ts) provides saved-session loading, shared types, category parsing, answer grading, and shuffling.
