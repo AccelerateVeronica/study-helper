@@ -4,7 +4,18 @@ import { flashcards } from './gh300Deck';
 
 type ReviewState = Record<string, 'learned' | 'practice'>;
 type StudyMode = 'flashcards' | 'quiz';
-type SavedStudy = { currentIndex: number; review: ReviewState; mode: StudyMode };
+type SavedStudy = { currentIndex: number; review: ReviewState; skipped: string[]; mode: StudyMode };
+type CategoryProgressMetric = 'total' | 'learned' | 'revisit' | 'skipped' | 'unseen' | 'reviewed';
+type SelectedCategoryProgress = { category: string; metric: CategoryProgressMetric };
+
+const categoryProgressMetricLabels: Record<CategoryProgressMetric, string> = {
+  total: 'all',
+  learned: 'learned',
+  revisit: 'to revisit',
+  skipped: 'skipped',
+  unseen: 'unseen',
+  reviewed: 'reviewed',
+};
 
 const STORAGE_KEY = 'fieldnotes-study-session';
 
@@ -18,23 +29,29 @@ function readSavedStudy(): SavedStudy {
           flashcards.some((card) => card.id === id) && (status === 'learned' || status === 'practice'),
         ),
       ) as ReviewState;
+      const skipped = Array.isArray(parsed.skipped)
+        ? [...new Set(parsed.skipped.filter((id) =>
+          typeof id === 'string' && flashcards.some((card) => card.id === id) && review[id] === undefined,
+        ))]
+        : [];
       const currentIndex = typeof parsed.currentIndex === 'number' && Number.isInteger(parsed.currentIndex)
         ? Math.max(0, Math.min(parsed.currentIndex, flashcards.length - 1))
         : 0;
-      return { currentIndex, review, mode: parsed.mode === 'quiz' ? 'quiz' : 'flashcards' };
+      return { currentIndex, review, skipped, mode: parsed.mode === 'quiz' ? 'quiz' : 'flashcards' };
     }
   } catch {
     // Start with a fresh session if saved browser data is unavailable.
   }
-  return { currentIndex: 0, review: {}, mode: 'flashcards' };
+  return { currentIndex: 0, review: {}, skipped: [], mode: 'flashcards' };
 }
 
 export default function App() {
   const [study, setStudy] = useState(readSavedStudy);
-  const { currentIndex, review, mode } = study;
+  const { currentIndex, review, skipped, mode } = study;
   const [quizSelections, setQuizSelections] = useState<string[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
   const [isRevisitListOpen, setIsRevisitListOpen] = useState(false);
+  const [selectedCategoryProgress, setSelectedCategoryProgress] = useState<SelectedCategoryProgress | null>(null);
   const [isRevisitMode, setIsRevisitMode] = useState(false);
   const [revisitCardIds, setRevisitCardIds] = useState<string[]>([]);
   const [dragOffset, setDragOffset] = useState(0);
@@ -65,22 +82,38 @@ export default function App() {
 
   const learnedCount = Object.values(review).filter((status) => status === 'learned').length;
   const practiceCount = Object.values(review).filter((status) => status === 'practice').length;
-  const progress = (Object.keys(review).length / flashcards.length) * 100;
+  const reviewedCount = Object.keys(review).length;
+  const progress = ((reviewedCount + skipped.length) / flashcards.length) * 100;
   const categoryProgress = Array.from({ length: 6 }, (_, index) => {
     const category = `T${index + 1}`;
     const cards = flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === category);
     const learned = cards.filter((card) => review[card.id] === 'learned').length;
     const revisit = cards.filter((card) => review[card.id] === 'practice').length;
+    const skippedCount = cards.filter((card) => skipped.includes(card.id)).length;
     const reviewed = learned + revisit;
     return {
       category,
       total: cards.length,
       learned,
       revisit,
-      unseen: cards.length - reviewed,
+      skipped: skippedCount,
+      unseen: cards.length - reviewed - skippedCount,
       percent: cards.length > 0 ? Math.round((reviewed / cards.length) * 100) : 0,
     };
   });
+  const selectedCategoryQuestions = selectedCategoryProgress
+    ? flashcards.flatMap((card, index) => {
+      const cardCategory = card.question.match(/^(T[1-6])Q\d+\./)?.[1];
+      const status = review[card.id];
+      const matchesMetric = selectedCategoryProgress.metric === 'total'
+        || (selectedCategoryProgress.metric === 'learned' && status === 'learned')
+        || (selectedCategoryProgress.metric === 'revisit' && status === 'practice')
+        || (selectedCategoryProgress.metric === 'skipped' && skipped.includes(card.id))
+        || (selectedCategoryProgress.metric === 'unseen' && !status && !skipped.includes(card.id))
+        || (selectedCategoryProgress.metric === 'reviewed' && status !== undefined);
+      return cardCategory === selectedCategoryProgress.category && matchesMetric ? [{ card, index }] : [];
+    })
+    : [];
 
   function advanceCard() {
     if (studyDeck.length === 0) return;
@@ -95,7 +128,11 @@ export default function App() {
   }
 
   function moveCard(direction: 'learned' | 'practice') {
-    setStudy((current) => ({ ...current, review: { ...current.review, [activeCard.id]: direction } }));
+    setStudy((current) => ({
+      ...current,
+      review: { ...current.review, [activeCard.id]: direction },
+      skipped: current.skipped.filter((id) => id !== activeCard.id),
+    }));
     advanceCard();
   }
 
@@ -116,6 +153,16 @@ export default function App() {
     setIsRevisitListOpen(false);
   }
 
+  function viewStudyCard(index: number) {
+    setIsRevisitMode(false);
+    setRevisitCardIds([]);
+    setStudy((current) => ({ ...current, currentIndex: index }));
+    setQuizSelections([]);
+    setIsRevealed(false);
+    setDragOffset(0);
+    document.getElementById('study')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   function selectQuizChoice(choice: string) {
     if (quizFinished) return;
     if (activeCard.answers.length === 1) {
@@ -124,6 +171,7 @@ export default function App() {
       setStudy((current) => ({
         ...current,
         review: { ...current.review, [activeCard.id]: isCorrect ? 'learned' : 'practice' },
+        skipped: current.skipped.filter((id) => id !== activeCard.id),
       }));
       return;
     }
@@ -137,11 +185,12 @@ export default function App() {
     setStudy((current) => ({
       ...current,
       review: { ...current.review, [activeCard.id]: isComplete ? 'learned' : 'practice' },
+      skipped: current.skipped.filter((id) => id !== activeCard.id),
     }));
   }
 
   function resetSession() {
-    setStudy((current) => ({ currentIndex: 0, review: {}, mode: current.mode }));
+    setStudy((current) => ({ currentIndex: 0, review: {}, skipped: [], mode: current.mode }));
     setIsRevisitMode(false);
     setRevisitCardIds([]);
     setIsRevisitListOpen(false);
@@ -211,7 +260,7 @@ export default function App() {
           <div className="mt-[60px] border-t border-line pt-[17px] max-[720px]:col-span-full max-[720px]:ml-0 max-[720px]:mt-4 max-[720px]:w-full max-[720px]:pt-3">
             <div className="flex justify-between font-mono text-[9px] tracking-[.8px] text-[#70766c] max-[720px]:text-[8px]">
               <span>SESSION PROGRESS</span>
-              <span className="text-green">{Object.keys(review).length}<span className="text-[#9c9e96]"> / {flashcards.length}</span></span>
+              <span className="text-green">{reviewedCount + skipped.length}<span className="text-[#9c9e96]"> / {flashcards.length}</span></span>
             </div>
             <div className="mt-[13px] h-1 overflow-hidden bg-[#e7e7dd]" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
               <span className="block h-full bg-green transition-[width] duration-300" style={{ width: `${progress}%` }} />
@@ -437,7 +486,11 @@ export default function App() {
                 Next question <ArrowRight size={15} />
               </button>
               <button className="min-h-[42px] cursor-pointer border-0 bg-transparent px-[10px] text-[10px] text-[#878d82] underline decoration-1 underline-offset-[3px] disabled:cursor-default disabled:text-[#b7bab1]" disabled={quizFinished} onClick={() => {
-                setStudy((current) => ({ ...current, review: { ...current.review, [activeCard.id]: 'practice' } }));
+                setStudy((current) => ({
+                  ...current,
+                  review: Object.fromEntries(Object.entries(current.review).filter(([id]) => id !== activeCard.id)),
+                  skipped: current.skipped.includes(activeCard.id) ? current.skipped : [...current.skipped, activeCard.id],
+                }));
                 advanceCard();
               }}>Skip</button>
             </div>
@@ -448,32 +501,83 @@ export default function App() {
       <section className="mx-auto mb-10 max-w-[1100px] border-t border-line pt-5" aria-labelledby="category-progress-heading">
         <h2 id="category-progress-heading" className="mb-4 text-[17px] font-medium">Progress by category</h2>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[440px] border-collapse text-right text-[11px] tabular-nums">
-            <caption className="sr-only">Study progress for categories T1 through T6. Reviewed includes learned and revisit cards.</caption>
+          <table className="w-full min-w-[560px] border-collapse text-right text-[11px] tabular-nums">
+            <caption className="sr-only">Study progress for categories T1 through T6. Reviewed includes learned and revisit cards; skipped is tracked separately.</caption>
             <thead className="border-b border-line text-[#70766c]">
               <tr>
                 <th scope="col" className="px-2 py-3 text-left font-medium">Category</th>
                 <th scope="col" className="px-2 py-3 font-medium">Total</th>
                 <th scope="col" className="px-2 py-3 font-medium">Learned</th>
                 <th scope="col" className="px-2 py-3 font-medium">Revisit</th>
+                <th scope="col" className="px-2 py-3 font-medium">Skipped</th>
                 <th scope="col" className="px-2 py-3 font-medium">Unseen</th>
                 <th scope="col" className="px-2 py-3 font-medium">Reviewed</th>
               </tr>
             </thead>
             <tbody>
-              {categoryProgress.map(({ category, total, learned, revisit, unseen, percent }) => (
-                <tr key={category} className="border-b border-line">
-                  <th scope="row" className="px-2 py-3 text-left font-mono font-medium">{category}</th>
-                  <td className="px-2 py-3">{total}</td>
-                  <td className="px-2 py-3 text-green-dark">{learned}</td>
-                  <td className="px-2 py-3 text-[#a55847]">{revisit}</td>
-                  <td className="px-2 py-3 text-muted">{unseen}</td>
-                  <td className="px-2 py-3">{percent}%</td>
-                </tr>
-              ))}
+              {categoryProgress.map(({ category, total, learned, revisit, skipped: skippedCount, unseen, percent }) => {
+                const metrics: { metric: CategoryProgressMetric; count: number; text: string }[] = [
+                  { metric: 'total', count: total, text: String(total) },
+                  { metric: 'learned', count: learned, text: String(learned) },
+                  { metric: 'revisit', count: revisit, text: String(revisit) },
+                  { metric: 'skipped', count: skippedCount, text: String(skippedCount) },
+                  { metric: 'unseen', count: unseen, text: String(unseen) },
+                  { metric: 'reviewed', count: learned + revisit, text: `${percent}%` },
+                ];
+                return (
+                  <tr key={category} className="border-b border-line">
+                    <th scope="row" className="px-2 py-3 text-left font-mono font-medium">{category}</th>
+                    {metrics.map(({ metric, count, text }) => {
+                      const isSelected = selectedCategoryProgress?.category === category
+                        && selectedCategoryProgress.metric === metric;
+                      const metricLabel = categoryProgressMetricLabels[metric];
+                      return (
+                        <td className={`px-2 py-3 ${metric === 'learned' ? 'text-green-dark' : metric === 'revisit' ? 'text-[#a55847]' : metric === 'unseen' ? 'text-muted' : ''}`} key={metric}>
+                          <button
+                            className={`cursor-pointer border-0 bg-transparent p-0 text-inherit underline decoration-dotted underline-offset-2 hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green ${isSelected ? 'font-semibold text-green-dark' : ''}`}
+                            type="button"
+                            aria-label={`View ${count} ${metricLabel} question${count === 1 ? '' : 's'} in ${category}`}
+                            aria-expanded={isSelected}
+                            aria-controls="category-question-list"
+                            onClick={() => setSelectedCategoryProgress((current) =>
+                              current?.category === category && current.metric === metric ? null : { category, metric },
+                            )}
+                          >
+                            {text}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+        {selectedCategoryProgress && (
+          <div id="category-question-list" className="mt-4 border-y border-line py-3" aria-labelledby="category-question-heading">
+            <h3 id="category-question-heading" className="mb-2 text-[12px] font-medium">
+              {selectedCategoryProgress.category} · {categoryProgressMetricLabels[selectedCategoryProgress.metric]} questions
+            </h3>
+            {selectedCategoryQuestions.length === 0 ? (
+              <p className="my-2 text-[11px] text-muted">No questions match this progress count yet.</p>
+            ) : (
+              <ul className="m-0 max-h-[280px] list-none overflow-y-auto p-0">
+                {selectedCategoryQuestions.map(({ card, index }) => (
+                  <li className="border-b border-line last:border-b-0" key={card.id}>
+                    <button
+                      className="w-full cursor-pointer border-0 bg-transparent px-2 py-3 text-left text-[11px] leading-[1.5] text-ink hover:bg-[#f5f5ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green"
+                      type="button"
+                      onClick={() => viewStudyCard(index)}
+                    >
+                      {card.question}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
 
       <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-[#989b91] max-[720px]:min-h-[48px]">
