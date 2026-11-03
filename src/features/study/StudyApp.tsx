@@ -19,6 +19,15 @@ const categoryProgressMetricLabels: Record<CategoryProgressMetric, string> = {
 
 const STORAGE_KEY = 'fieldnotes-study-session';
 
+function shuffle<T>(items: readonly T[]): T[] {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
 function readSavedStudy(): SavedStudy {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -54,6 +63,25 @@ export default function App() {
   const [selectedCategoryProgress, setSelectedCategoryProgress] = useState<SelectedCategoryProgress | null>(null);
   const [isRevisitMode, setIsRevisitMode] = useState(false);
   const [revisitCardIds, setRevisitCardIds] = useState<string[]>([]);
+  const [quizCategory, setQuizCategory] = useState<string | null>(null);
+  const [quizOrderIds, setQuizOrderIds] = useState<string[]>(() => {
+    if (study.mode !== 'quiz') return [];
+    const shuffledIds = shuffle(flashcards.map((card) => card.id));
+    const currentId = flashcards[study.currentIndex]?.id;
+    const currentPosition = shuffledIds.indexOf(currentId);
+    return currentPosition > 0
+      ? [...shuffledIds.slice(currentPosition), ...shuffledIds.slice(0, currentPosition)]
+      : shuffledIds;
+  });
+  const [quizChoiceOrders, setQuizChoiceOrders] = useState<Record<string, string[]>>(() =>
+    study.mode === 'quiz'
+      ? Object.fromEntries(flashcards.map((card) => [card.id, shuffle(card.choices)]))
+      : {},
+  );
+  const [quizResults, setQuizResults] = useState<Record<string, boolean>>({});
+  const [quizSkippedIds, setQuizSkippedIds] = useState<string[]>([]);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [isQuizComplete, setIsQuizComplete] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStart = useRef<number | null>(null);
   const activeCard = flashcards[currentIndex];
@@ -62,12 +90,15 @@ export default function App() {
       const card = flashcards.find((item) => item.id === id);
       return card ? [card] : [];
     })
-    : flashcards;
+    : mode === 'quiz' && quizOrderIds.length > 0
+      ? quizOrderIds.flatMap((id) => {
+        const card = flashcards.find((item) => item.id === id);
+        return card ? [card] : [];
+      })
+      : quizCategory
+        ? flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === quizCategory)
+      : flashcards;
   const deckPosition = studyDeck.findIndex((card) => card.id === activeCard.id);
-  const quizFinished = activeCard.answers.length === 1
-    ? quizSelections.length > 0
-    : activeCard.answers.every((answer) => quizSelections.includes(answer))
-      && quizSelections.every((choice) => activeCard.answers.includes(choice));
   const quizAnswerCorrect = quizSelections.length === activeCard.answers.length
     && activeCard.answers.every((answer) => quizSelections.includes(answer));
   const quizHasIncorrectChoice = quizSelections.some((choice) => !activeCard.answers.includes(choice));
@@ -84,6 +115,11 @@ export default function App() {
   const practiceCount = Object.values(review).filter((status) => status === 'practice').length;
   const reviewedCount = Object.keys(review).length;
   const progress = ((reviewedCount + skipped.length) / flashcards.length) * 100;
+  const quizAnsweredCount = Object.keys(quizResults).length;
+  const quizAttemptedCount = quizAnsweredCount + quizSkippedIds.length;
+  const quizRemainingCount = Math.max(0, studyDeck.length - quizAttemptedCount);
+  const quizCorrectCount = Object.values(quizResults).filter(Boolean).length;
+  const activeQuizChoices = quizChoiceOrders[activeCard.id] ?? activeCard.choices;
   const categoryProgress = Array.from({ length: 6 }, (_, index) => {
     const category = `T${index + 1}`;
     const cards = flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === category);
@@ -117,12 +153,17 @@ export default function App() {
 
   function advanceCard() {
     if (studyDeck.length === 0) return;
+    if (mode === 'quiz' && deckPosition === studyDeck.length - 1) {
+      setIsQuizComplete(true);
+      return;
+    }
     const nextCard = studyDeck[(deckPosition + 1) % studyDeck.length];
     setStudy((current) => ({
       ...current,
       currentIndex: flashcards.findIndex((card) => card.id === nextCard.id),
     }));
     setQuizSelections([]);
+    setQuizSubmitted(false);
     setIsRevealed(false);
     setDragOffset(0);
   }
@@ -137,7 +178,16 @@ export default function App() {
   }
 
   function changeMode(nextMode: StudyMode) {
+    if (nextMode === 'quiz') {
+      startQuiz(flashcards, null);
+      return;
+    }
     setStudy((current) => ({ ...current, mode: nextMode }));
+    setQuizCategory(null);
+    setQuizOrderIds([]);
+    setQuizResults({});
+    setQuizSkippedIds([]);
+    setIsQuizComplete(false);
     setQuizSelections([]);
     setIsRevealed(false);
   }
@@ -148,6 +198,7 @@ export default function App() {
     setIsRevisitMode(true);
     setStudy((current) => ({ ...current, currentIndex: index }));
     setQuizSelections([]);
+    setQuizSubmitted(false);
     setIsRevealed(false);
     setDragOffset(0);
     setIsRevisitListOpen(false);
@@ -156,46 +207,102 @@ export default function App() {
   function viewStudyCard(index: number) {
     setIsRevisitMode(false);
     setRevisitCardIds([]);
+    setQuizCategory(null);
+    setQuizOrderIds([]);
     setStudy((current) => ({ ...current, currentIndex: index }));
+    setQuizSelections([]);
+    setQuizSubmitted(false);
+    setIsRevealed(false);
+    setDragOffset(0);
+    document.getElementById('study')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function startQuiz(cards: typeof flashcards, category: string | null) {
+    if (cards.length === 0) return;
+    const shuffledCards = shuffle(cards);
+    const choiceOrders = Object.fromEntries(
+      shuffledCards.map((card) => [card.id, shuffle(card.choices)]),
+    );
+    setIsRevisitMode(false);
+    setRevisitCardIds([]);
+    setQuizCategory(category);
+    setQuizOrderIds(shuffledCards.map((card) => card.id));
+    setQuizChoiceOrders(choiceOrders);
+    setQuizResults({});
+    setQuizSkippedIds([]);
+    setQuizSubmitted(false);
+    setIsQuizComplete(false);
+    setStudy((current) => ({
+      ...current,
+      currentIndex: flashcards.findIndex((card) => card.id === shuffledCards[0].id),
+      mode: 'quiz',
+    }));
     setQuizSelections([]);
     setIsRevealed(false);
     setDragOffset(0);
     document.getElementById('study')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function startCategoryQuiz(category: string) {
+    const categoryCards = flashcards.filter(
+      (card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === category,
+    );
+    startQuiz(categoryCards, category);
+  }
+
+  function submitQuizAnswer(selections: string[]) {
+    const isCorrect = selections.length === activeCard.answers.length
+      && activeCard.answers.every((answer) => selections.includes(answer));
+    setQuizSelections(selections);
+    setQuizSubmitted(true);
+    setQuizResults((current) => ({ ...current, [activeCard.id]: isCorrect }));
+    setStudy((current) => ({
+      ...current,
+      review: { ...current.review, [activeCard.id]: isCorrect ? 'learned' : 'practice' },
+      skipped: current.skipped.filter((id) => id !== activeCard.id),
+    }));
+  }
+
+  function skipQuizQuestion() {
+    setQuizSkippedIds((current) => current.includes(activeCard.id) ? current : [...current, activeCard.id]);
+    setStudy((current) => ({
+      ...current,
+      review: Object.fromEntries(Object.entries(current.review).filter(([id]) => id !== activeCard.id)),
+      skipped: current.skipped.includes(activeCard.id) ? current.skipped : [...current.skipped, activeCard.id],
+    }));
+    advanceCard();
+  }
+
   function selectQuizChoice(choice: string) {
-    if (quizFinished) return;
+    if (quizSubmitted) return;
     if (activeCard.answers.length === 1) {
-      const isCorrect = activeCard.answers.includes(choice);
-      setQuizSelections([choice]);
-      setStudy((current) => ({
-        ...current,
-        review: { ...current.review, [activeCard.id]: isCorrect ? 'learned' : 'practice' },
-        skipped: current.skipped.filter((id) => id !== activeCard.id),
-      }));
+      submitQuizAnswer([choice]);
       return;
     }
-
     const nextSelections = quizSelections.includes(choice)
       ? quizSelections.filter((selected) => selected !== choice)
       : [...quizSelections, choice];
-    const isComplete = activeCard.answers.every((answer) => nextSelections.includes(answer))
-      && nextSelections.every((selected) => activeCard.answers.includes(selected));
     setQuizSelections(nextSelections);
-    setStudy((current) => ({
-      ...current,
-      review: { ...current.review, [activeCard.id]: isComplete ? 'learned' : 'practice' },
-      skipped: current.skipped.filter((id) => id !== activeCard.id),
-    }));
   }
 
   function resetSession() {
     setStudy((current) => ({ currentIndex: 0, review: {}, skipped: [], mode: current.mode }));
     setIsRevisitMode(false);
     setRevisitCardIds([]);
+    setQuizCategory(null);
     setIsRevisitListOpen(false);
     setQuizSelections([]);
+    setQuizSubmitted(false);
+    setQuizResults({});
+    setQuizSkippedIds([]);
+    setIsQuizComplete(false);
     setIsRevealed(false);
+    if (mode === 'quiz') {
+      startQuiz(flashcards, null);
+    } else {
+      setQuizOrderIds([]);
+      setQuizChoiceOrders({});
+    }
   }
 
   function revealFlashcard(event?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) {
@@ -317,13 +424,23 @@ export default function App() {
               <ListChecks size={15} /> Quiz
             </button>
           </div>
-          {isRevisitMode && (
+          {(isRevisitMode || quizCategory) && (
             <button
               className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent px-1 py-2 text-[10px] text-[#757b71] underline decoration-1 underline-offset-2 hover:text-green-dark"
               type="button"
               onClick={() => {
+                if (quizCategory && !isRevisitMode) {
+                  startQuiz(flashcards, null);
+                  return;
+                }
                 setIsRevisitMode(false);
                 setRevisitCardIds([]);
+                setQuizCategory(null);
+                setQuizOrderIds([]);
+                setQuizResults({});
+                setQuizSkippedIds([]);
+                setQuizSubmitted(false);
+                setIsQuizComplete(false);
                 setQuizSelections([]);
                 setIsRevealed(false);
               }}
@@ -335,7 +452,7 @@ export default function App() {
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
               <div className="font-mono text-[9px] tracking-[.8px] text-[#8a8e84]">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
-              <h2 className="mt-2 text-[17px] font-medium">{isRevisitMode ? 'Revisit' : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{deckPosition + 1} of {studyDeck.length}</b></h2>
+              <h2 className="mt-2 text-[17px] font-medium">{isRevisitMode ? 'Revisit' : quizCategory ? `${quizCategory} quiz` : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{deckPosition + 1} of {studyDeck.length}</b></h2>
             </div>
             <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-[#adb0a5]" aria-label={`Card ${deckPosition + 1} of ${studyDeck.length}`}>
               <span className="text-[20px] text-green">{String(deckPosition + 1).padStart(2, '0')}</span>
@@ -344,7 +461,19 @@ export default function App() {
             </div>
           </div>
 
-          <div className="relative min-h-[405px] max-[720px]:min-h-[410px]">
+          {mode === 'quiz' && !isQuizComplete && (
+            <div className="mb-4" aria-label="Quiz progress">
+              <div className="mb-2 flex justify-between font-mono text-[9px] text-[#777e72]">
+                <span>{quizAttemptedCount} answered</span>
+                <span>{quizRemainingCount} remaining</span>
+              </div>
+              <div className="h-1 overflow-hidden bg-[#e7e7dd]" role="progressbar" aria-label="Quiz progress" aria-valuenow={Math.round((quizAttemptedCount / studyDeck.length) * 100)} aria-valuemin={0} aria-valuemax={100}>
+                <span className="block h-full bg-green transition-[width] duration-300" style={{ width: `${(quizAttemptedCount / studyDeck.length) * 100}%` }} />
+              </div>
+            </div>
+          )}
+
+          <div className={`relative min-h-[405px] max-[720px]:min-h-[410px] ${mode === 'quiz' && isQuizComplete ? 'hidden' : ''}`}>
             <div className="absolute inset-[9px_-8px_-8px_8px] rounded-[6px] border border-[#ebe9e0] bg-[#f1efe6]" />
             <div className="absolute inset-[4px_-4px_-4px_4px] rounded-[6px] border border-[#ebe9e0] bg-[#f8f7f1]" />
             <article
@@ -370,18 +499,17 @@ export default function App() {
                   <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
                   <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
                   <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
-                    {activeCard.choices.map((choice, index) => {
+                    {activeQuizChoices.map((choice, index) => {
                       const isSelected = quizSelections.includes(choice);
                       const isCorrectChoice = activeCard.answers.includes(choice);
-                      const isSingleAnswered = activeCard.answers.length === 1 && quizFinished;
                       const choiceClass = isSelected
                         ? isCorrectChoice
                           ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
                           : 'border-[#e1b5a9] bg-[#fbefeb] text-[#a64e3c] hover:border-[#e1b5a9] hover:bg-[#fbefeb]'
-                        : isSingleAnswered && isCorrectChoice
+                        : quizSubmitted && isCorrectChoice
                           ? 'border-[#b7c9b0] bg-[#edf3e9] text-green-dark hover:border-[#b7c9b0] hover:bg-[#edf3e9]'
                           : '';
-                      const letterClass = isSelected && isCorrectChoice || isSingleAnswered && isCorrectChoice
+                      const letterClass = isSelected && isCorrectChoice || quizSubmitted && isCorrectChoice
                         ? 'border-green bg-green text-white'
                         : isSelected && !isCorrectChoice ? 'border-coral bg-coral text-white' : '';
                       return (
@@ -389,34 +517,32 @@ export default function App() {
                           className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[44px] ${choiceClass}`}
                           key={choice}
                           onClick={() => selectQuizChoice(choice)}
-                          disabled={quizFinished}
+                          disabled={quizSubmitted}
                           aria-pressed={isSelected}
                         >
                           <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80] ${letterClass}`}>{String.fromCharCode(65 + index)}</span>
                           <span>{choice}</span>
-                          {isSingleAnswered && isCorrectChoice && <Check className="absolute right-[10px]" size={14} />}
+                          {quizSubmitted && isCorrectChoice && <Check className="absolute right-[10px]" size={14} />}
                           {isSelected && !isCorrectChoice && <X className="absolute right-[10px]" size={14} />}
                         </button>
                       );
                     })}
                   </div>
-                  {quizSelections.length > 0 && (
+                  {activeCard.answers.length > 1 && !quizSubmitted && (
+                    <button
+                      className="mt-3 min-h-[38px] w-fit cursor-pointer border border-green bg-green px-4 text-[10px] text-white hover:bg-green-dark disabled:cursor-not-allowed disabled:border-[#d7d9d0] disabled:bg-[#e9e9e2] disabled:text-[#999d93]"
+                      type="button"
+                      disabled={quizSelections.length === 0}
+                      onClick={() => submitQuizAnswer(quizSelections)}
+                    >
+                      Check answer
+                    </button>
+                  )}
+                  {quizSubmitted && (
                     <div className={`mt-3 flex flex-col gap-[5px] border-l-2 px-[10px] py-[9px] text-[10px] leading-[1.5] ${quizFeedbackTone}`} aria-live="polite">
-                      {activeCard.answers.length === 1 ? (
-                        <>
-                          <strong className="font-semibold">{quizSelections[0] === activeCard.answers[0] ? 'Correct' : 'Not quite'}</strong>
-                          <span className="text-[#72786f]">{activeCard.explanation}</span>
-                        </>
-                      ) : quizFinished ? (
-                        <>
-                          <strong className="font-semibold text-green">All correct</strong>
-                          <span className="text-[#72786f]">{activeCard.explanation}</span>
-                        </>
-                      ) : quizSelections.some((selected) => !activeCard.answers.includes(selected)) ? (
-                        <strong className="font-semibold">That choice is not correct. Deselect it or try another.</strong>
-                      ) : (
-                        <strong className="font-semibold">{quizSelections.length} of {activeCard.answers.length} correct choices selected</strong>
-                      )}
+                      <strong className="font-semibold">{quizAnswerCorrect ? 'Correct' : 'Not quite'}</strong>
+                      {!quizAnswerCorrect && <span>Correct answer: {activeCard.answers.join(', ')}</span>}
+                      {activeCard.explanation && <span className="text-[#72786f]">{activeCard.explanation}</span>}
                     </div>
                   )}
                 </div>
@@ -463,6 +589,34 @@ export default function App() {
             {mode === 'flashcards' && dragOffset < -24 && <div className="pointer-events-none absolute left-[22px] top-[72px] z-[3] flex -rotate-[8deg] items-center gap-[5px] border-2 border-coral px-[9px] py-[6px] font-mono text-[10px] tracking-[.8px] text-coral">REVISIT <RotateCcw size={14} /></div>}
           </div>
 
+          {mode === 'quiz' && isQuizComplete && (
+            <article className="mt-4 flex min-h-[300px] flex-col items-center justify-center border border-[#ece9df] bg-paper px-6 py-10 text-center" aria-live="polite">
+              <span className="grid size-[42px] place-items-center rounded-full bg-[#e9f0e5] text-green">
+                <Check size={23} />
+              </span>
+              <h3 className="mb-1 mt-4 font-display text-[27px] font-semibold">Quiz complete</h3>
+              <p className="mb-5 text-[12px] text-[#72786f]">
+                You got {quizCorrectCount} of {studyDeck.length} questions correct ({Math.round((quizCorrectCount / studyDeck.length) * 100)}%).
+              </p>
+              <div className="mb-6 flex flex-wrap justify-center gap-x-5 gap-y-2 font-mono text-[10px] text-[#777e72]">
+                <span>{quizAnsweredCount - quizCorrectCount} incorrect</span>
+                <span>{quizSkippedIds.length} skipped</span>
+              </div>
+              <button
+                className="inline-flex min-h-[42px] cursor-pointer items-center gap-2 border border-green bg-green px-4 text-[11px] text-white hover:bg-green-dark"
+                type="button"
+                onClick={() => startQuiz(
+                  quizCategory
+                    ? flashcards.filter((card) => card.question.match(/^(T[1-6])Q\d+\./)?.[1] === quizCategory)
+                    : flashcards,
+                  quizCategory,
+                )}
+              >
+                Quiz again <RotateCcw size={14} />
+              </button>
+            </article>
+          )}
+
           {mode === 'flashcards' ? (
             <>
               <div className="mt-[25px] flex items-center justify-center gap-[15px] max-[720px]:mt-[22px] max-[720px]:gap-2">
@@ -480,19 +634,12 @@ export default function App() {
               </div>
               <div className="mt-[15px] text-center text-[10px] text-[#92968d] max-[720px]:text-[9px]"><span className="mr-1 align-[-1px] text-[15px] text-green">↔</span> Swipe the card to sort it after checking your answer</div>
             </>
-          ) : (
+          ) : !isQuizComplete && (
             <div className="mt-[25px] flex items-center justify-center gap-[15px] max-[720px]:mt-[19px]">
-              <button className="inline-flex min-h-[46px] cursor-pointer items-center gap-[10px] border border-green bg-green px-4 text-[11px] text-white hover:enabled:bg-green-dark disabled:cursor-not-allowed disabled:border-[#d7d9d0] disabled:bg-[#e9e9e2] disabled:text-[#999d93] max-[720px]:flex-1 max-[720px]:justify-center" disabled={!quizFinished} onClick={advanceCard}>
-                Next question <ArrowRight size={15} />
+              <button className="inline-flex min-h-[46px] cursor-pointer items-center gap-[10px] border border-green bg-green px-4 text-[11px] text-white hover:enabled:bg-green-dark disabled:cursor-not-allowed disabled:border-[#d7d9d0] disabled:bg-[#e9e9e2] disabled:text-[#999d93] max-[720px]:flex-1 max-[720px]:justify-center" disabled={!quizSubmitted} onClick={advanceCard}>
+                {deckPosition === studyDeck.length - 1 ? 'See results' : 'Next question'} <ArrowRight size={15} />
               </button>
-              <button className="min-h-[42px] cursor-pointer border-0 bg-transparent px-[10px] text-[10px] text-[#878d82] underline decoration-1 underline-offset-[3px] disabled:cursor-default disabled:text-[#b7bab1]" disabled={quizFinished} onClick={() => {
-                setStudy((current) => ({
-                  ...current,
-                  review: Object.fromEntries(Object.entries(current.review).filter(([id]) => id !== activeCard.id)),
-                  skipped: current.skipped.includes(activeCard.id) ? current.skipped : [...current.skipped, activeCard.id],
-                }));
-                advanceCard();
-              }}>Skip</button>
+              <button className="min-h-[42px] cursor-pointer border-0 bg-transparent px-[10px] text-[10px] text-[#878d82] underline decoration-1 underline-offset-[3px] disabled:cursor-default disabled:text-[#b7bab1]" disabled={quizSubmitted} onClick={skipQuizQuestion}>Skip</button>
             </div>
           )}
         </section>
@@ -512,6 +659,7 @@ export default function App() {
                 <th scope="col" className="px-2 py-3 font-medium">Skipped</th>
                 <th scope="col" className="px-2 py-3 font-medium">Unseen</th>
                 <th scope="col" className="px-2 py-3 font-medium">Reviewed</th>
+                <th scope="col" className="px-2 py-3 text-left font-medium">Quiz</th>
               </tr>
             </thead>
             <tbody>
@@ -548,6 +696,17 @@ export default function App() {
                         </td>
                       );
                     })}
+                    <td className="px-2 py-3 text-left">
+                      <button
+                        className="cursor-pointer border-0 bg-transparent p-0 text-[10px] text-green-dark underline decoration-dotted underline-offset-2 hover:text-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green disabled:cursor-not-allowed disabled:text-muted"
+                        type="button"
+                        disabled={total === 0}
+                        onClick={() => startCategoryQuiz(category)}
+                        aria-label={`Start quiz for ${category}`}
+                      >
+                        Start quiz
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
