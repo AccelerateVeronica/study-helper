@@ -22,9 +22,12 @@ export function QuizQuestion({ card, choices, selections, submitted, onSelectCho
 
   return (
     <div className="flex flex-1 flex-col">
-      <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{card.question}</h3>
-      <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">{card.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
-      <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
+      <h3 className="mb-4 mt-6 text-[23px] font-semibold leading-[1.45] tracking-[-.5px] max-[720px]:text-[20px]">{card.question}</h3>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted">
+        <span>{card.answers.length > 1 ? 'Select all that apply' : 'Select one answer'}</span>
+        {card.answers.length > 1 && <span className="rounded-full bg-[#f0f3f5] px-2.5 py-1 font-mono text-[10px]">{selections.length} selected</span>}
+      </div>
+      <div className="grid grid-cols-1 gap-2.5" role="group" aria-label="Answer choices">
         {choices.map((choice, index) => {
           const isSelected = selections.includes(choice);
           const isCorrectChoice = card.answers.includes(choice);
@@ -44,13 +47,13 @@ export function QuizQuestion({ card, choices, selections, submitted, onSelectCho
               : isSelected ? 'border-coral bg-coral text-white' : '';
           return (
             <button
-              className={`relative flex min-h-[42px] cursor-pointer items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 pr-8 text-left text-[11px] transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default max-[720px]:min-h-[44px] ${choiceClass}`}
+              className={`answer-choice cursor-pointer pr-10 transition-[border-color,background] duration-[160ms] hover:border-[#9cad92] hover:bg-[#fafbf7] disabled:cursor-default ${choiceClass}`}
               key={choice}
               onClick={() => onSelectChoice(choice)}
               disabled={submitted}
               aria-pressed={isSelected}
             >
-              <span className={`grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80] ${letterClass}`}>{String.fromCharCode(65 + index)}</span>
+              <span className={`choice-letter ${letterClass}`}>{String.fromCharCode(65 + index)}</span>
               <span>{choice}</span>
               {submitted && isCorrectChoice && <Check className="absolute right-[10px]" size={14} />}
               {submitted && isSelected && !isCorrectChoice && <X className="absolute right-[10px]" size={14} />}
@@ -60,7 +63,7 @@ export function QuizQuestion({ card, choices, selections, submitted, onSelectCho
       </div>
       {card.answers.length > 1 && !submitted && (
         <button
-          className="mt-3 min-h-[38px] w-fit cursor-pointer border border-green bg-green px-4 text-[10px] text-white hover:bg-green-dark disabled:cursor-not-allowed disabled:border-[#d7d9d0] disabled:bg-[#e9e9e2] disabled:text-[#999d93]"
+          className="primary-action mt-4 w-fit max-[720px]:w-full"
           type="button"
           disabled={selections.length === 0}
           onClick={onSubmit}
@@ -69,7 +72,7 @@ export function QuizQuestion({ card, choices, selections, submitted, onSelectCho
         </button>
       )}
       {submitted && (
-        <div className={`mt-3 flex flex-col gap-[5px] border-l-2 px-[10px] py-[9px] text-[10px] leading-[1.5] ${feedbackTone}`} aria-live="polite">
+        <div className={`mt-4 flex flex-col gap-2 rounded-xl border-l-2 px-4 py-3 text-[13px] leading-relaxed ${feedbackTone}`} aria-live="polite">
           <strong className="font-semibold">{answerCorrect ? 'Correct' : 'Not quite'}</strong>
           {!answerCorrect && <span>Correct answer: {card.answers.join(', ')}</span>}
           {card.explanation && <span className="text-[#72786f]">{card.explanation}</span>}

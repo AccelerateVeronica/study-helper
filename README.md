@@ -9,6 +9,8 @@ A React and TypeScript study app for the GH-300 question bank, with 121 multiple
 
 The app saves your current deck position, review progress, and selected mode in browser localStorage.
 
+The interface uses a minimal, responsive layout with full-width answer choices, touch-friendly controls, and a horizontally scrollable category table on smaller screens. Shared visual tokens and control styles live in [`tailwind.css`](src/styles/tailwind.css).
+
 ## Run locally
 
 ```bash

@@ -54,12 +54,16 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
     : [];
 
   return (
-    <section className="mx-auto mb-10 max-w-[1100px] border-t border-line pt-5" aria-labelledby="category-progress-heading">
-      <h2 id="category-progress-heading" className="mb-4 text-[17px] font-medium">Progress by category</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse text-right text-[11px] tabular-nums">
+    <section className="mx-auto mb-10 max-w-[1100px] rounded-2xl border border-line bg-paper p-6 shadow-[0_4px_24px_#18252f04] max-[720px]:p-4" aria-labelledby="category-progress-heading">
+      <div className="mb-5">
+        <h2 id="category-progress-heading" className="text-[18px] font-semibold tracking-[-.3px]">Progress by category</h2>
+        <p className="mt-1 text-[13px] text-muted">Select a number to explore questions, or start a focused quiz.</p>
+        <p className="mt-2 text-[12px] text-muted min-[721px]:hidden">Swipe the table to see all categories and quiz actions.</p>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-line" role="region" aria-label="Category progress table" tabIndex={0}>
+        <table className="w-full min-w-[680px] border-collapse text-right text-[13px] tabular-nums">
           <caption className="sr-only">Study progress for categories T1 through T6. Reviewed includes learned and revisit cards; skipped is tracked separately.</caption>
-          <thead className="border-b border-line text-[#70766c]">
+          <thead className="border-b border-line bg-[#f6f8fa] text-muted">
             <tr>
               <th scope="col" className="px-2 py-3 text-left font-medium">Category</th>
               <th scope="col" className="px-2 py-3 font-medium">Total</th>
@@ -82,7 +86,7 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
                 { metric: 'reviewed', count: learned + revisit, text: `${percent}%` },
               ];
               return (
-                <tr key={category} className="border-b border-line">
+                <tr key={category} className="border-b border-line last:border-b-0 hover:bg-[#fafcfd]">
                   <th scope="row" className="px-2 py-3 text-left font-mono font-medium">{category}</th>
                   {metrics.map(({ metric, count, text }) => {
                     const isSelected = selectedProgress?.category === category
@@ -91,7 +95,7 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
                     return (
                       <td className={`px-2 py-3 ${metric === 'learned' ? 'text-green-dark' : metric === 'revisit' ? 'text-[#a55847]' : metric === 'unseen' ? 'text-muted' : ''}`} key={metric}>
                         <button
-                          className={`cursor-pointer border-0 bg-transparent p-0 text-inherit underline decoration-dotted underline-offset-2 hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green ${isSelected ? 'font-semibold text-green-dark' : ''}`}
+                          className={`min-h-11 min-w-11 cursor-pointer rounded-lg border-0 px-2 text-inherit transition-colors hover:bg-[#edf5f3] hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green ${isSelected ? 'bg-[#e7f2ef] font-semibold text-green-dark' : 'bg-transparent'}`}
                           type="button"
                           aria-label={`View ${count} ${metricLabel} question${count === 1 ? '' : 's'} in ${category}`}
                           aria-expanded={isSelected}
@@ -107,7 +111,7 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
                   })}
                   <td className="px-2 py-3 text-left">
                     <button
-                      className="cursor-pointer border-0 bg-transparent p-0 text-[10px] text-green-dark underline decoration-dotted underline-offset-2 hover:text-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green disabled:cursor-not-allowed disabled:text-muted"
+                      className="min-h-11 cursor-pointer whitespace-nowrap rounded-lg border border-line bg-white px-3 text-[12px] font-medium text-green-dark hover:border-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green disabled:cursor-not-allowed disabled:text-muted"
                       type="button"
                       disabled={total === 0}
                       onClick={() => onStartQuiz(category)}
@@ -123,8 +127,8 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
         </table>
       </div>
       {selectedProgress && (
-        <div id="category-question-list" className="mt-4 border-y border-line py-3" aria-labelledby="category-question-heading">
-          <h3 id="category-question-heading" className="mb-2 text-[12px] font-medium">
+        <div id="category-question-list" className="mt-5 rounded-xl border border-line p-4" aria-labelledby="category-question-heading">
+          <h3 id="category-question-heading" className="mb-3 text-[14px] font-semibold">
             {selectedProgress.category} · {metricLabels[selectedProgress.metric]} questions
           </h3>
           {selectedQuestions.length === 0 ? (
@@ -134,7 +138,7 @@ export function CategoryProgress({ review, skipped, onViewCard, onStartQuiz }: C
               {selectedQuestions.map(({ card, index }) => (
                 <li className="border-b border-line last:border-b-0" key={card.id}>
                   <button
-                    className="w-full cursor-pointer border-0 bg-transparent px-2 py-3 text-left text-[11px] leading-[1.5] text-ink hover:bg-[#f5f5ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green"
+                    className="min-h-12 w-full cursor-pointer rounded-lg border-0 bg-transparent px-3 py-3 text-left text-[14px] leading-relaxed text-ink hover:bg-[#f6f8fa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green"
                     type="button"
                     onClick={() => onViewCard(index)}
                   >
