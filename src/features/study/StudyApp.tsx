@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Layers, ListChecks, RotateCcw, Sparkles } from 'lucide-react';
 import { CategoryProgress } from './CategoryProgress';
 import { flashcards } from './gh300Deck';
@@ -38,19 +38,21 @@ export default function App() {
   const studyHeadingRef = useRef<HTMLHeadingElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const activeCard = flashcards[currentIndex];
-  const studyDeck = isRevisitMode
-    ? revisitCardIds.flatMap((id) => {
-      const card = flashcards.find((item) => item.id === id);
-      return card ? [card] : [];
-    })
-    : mode === 'quiz' && quizOrderIds.length > 0
-      ? quizOrderIds.flatMap((id) => {
+  const studyDeck = useMemo(() => (
+    isRevisitMode
+      ? revisitCardIds.flatMap((id) => {
         const card = flashcards.find((item) => item.id === id);
         return card ? [card] : [];
       })
-      : quizCategory
-        ? flashcards.filter((card) => getCardCategory(card) === quizCategory)
-      : flashcards;
+      : mode === 'quiz' && quizOrderIds.length > 0
+        ? quizOrderIds.flatMap((id) => {
+          const card = flashcards.find((item) => item.id === id);
+          return card ? [card] : [];
+        })
+        : quizCategory
+          ? flashcards.filter((card) => getCardCategory(card) === quizCategory)
+          : flashcards
+  ), [isRevisitMode, mode, quizCategory, quizOrderIds, revisitCardIds]);
   const deckPosition = studyDeck.findIndex((card) => card.id === activeCard.id);
   useEffect(() => {
     if (focusRequest > 0) studyHeadingRef.current?.focus();
@@ -122,7 +124,7 @@ export default function App() {
     setIsRevisitMode(true);
     resetQuizSession();
     setStudy((current) => ({ ...current, currentIndex: index, mode: 'flashcards' }));
-    setFocusRequest((n) => n + 1);
+    setFocusRequest((request) => request + 1);
     setQuizSelections([]);
     setQuizSubmitted(false);
     setIsRevealed(false);
@@ -137,7 +139,7 @@ export default function App() {
     setQuizOrderIds([]);
     resetQuizSession();
     setStudy((current) => ({ ...current, currentIndex: index, mode: 'flashcards' }));
-    setFocusRequest((n) => n + 1);
+    setFocusRequest((request) => request + 1);
     setQuizSelections([]);
     setQuizSubmitted(false);
     setIsRevealed(false);
@@ -274,7 +276,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  });
+  }, [activeCard.id, deckPosition, isRevealed, mode, studyDeck]);
 
   return (
     <main className="relative mx-auto min-h-screen max-w-[1320px] px-10 max-[960px]:px-6 max-[720px]:px-4">
@@ -293,22 +295,22 @@ export default function App() {
 
       <section className="mx-auto my-12 grid max-w-[1100px] grid-cols-[240px_minmax(0,1fr)] items-start gap-16 max-[960px]:grid-cols-[200px_minmax(0,1fr)] max-[960px]:gap-8 max-[720px]:my-6 max-[720px]:flex max-[720px]:flex-col max-[720px]:gap-6" id="study">
         <aside className="pt-[21px] max-[720px]:grid max-[720px]:w-full max-[720px]:grid-cols-1 max-[720px]:items-start max-[720px]:pt-0" aria-label="Study progress">
-          <div className="flex items-center gap-[9px] whitespace-nowrap font-mono text-[9px] tracking-[.8px] text-[#82877d] max-[720px]:col-span-full"><span className="inline-block h-px w-5 bg-coral" /> YOUR STUDY DESK</div>
+          <div className="flex items-center gap-[9px] whitespace-nowrap font-mono text-[9px] tracking-[.8px] text-green-dark max-[720px]:col-span-full"><span className="inline-block h-px w-5 bg-coral" /> YOUR STUDY DESK</div>
           <h1 className="mb-3 mt-6 font-display text-[40px] font-semibold leading-[1.15] tracking-[-1.4px] max-[960px]:text-[34px] max-[720px]:mb-0 max-[720px]:mt-3 max-[720px]:text-[28px]">A little closer to <span className="text-green">knowing.</span></h1>
           <p className="m-0 text-[13px] leading-[1.7] text-muted max-[720px]:hidden">Small steps make<br />strong memories.</p>
 
           <div className="mt-[60px] border-t border-line pt-[17px] max-[720px]:col-span-full max-[720px]:ml-0 max-[720px]:mt-4 max-[720px]:w-full max-[720px]:pt-3">
             <div className="flex justify-between font-mono text-[9px] tracking-[.8px] text-[#70766c] max-[720px]:text-[8px]">
               <span>SESSION PROGRESS</span>
-              <span className="text-green">{reviewedCount + skipped.length}<span className="text-[#9c9e96]"> / {flashcards.length}</span></span>
+              <span className="text-green">{reviewedCount + skipped.length}<span className="text-green-dark"> / {flashcards.length}</span></span>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e7edf1]" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
               <span className="block h-full bg-green transition-[width] duration-300" style={{ width: `${progress}%` }} />
             </div>
-            <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-[#757b71] max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-4 max-[720px]:text-[10px] max-[380px]:gap-3 max-[380px]:text-[9px]">
+            <div className="mt-4 flex flex-col gap-[9px] text-[11px] text-green-dark max-[720px]:mt-[10px] max-[720px]:flex-row max-[720px]:gap-4 max-[720px]:text-[10px] max-[380px]:gap-3 max-[380px]:text-[9px]">
               <span className="flex items-center gap-[7px] whitespace-nowrap max-[720px]:gap-1"><Check className="text-green max-[720px]:w-3" size={14} /> {learnedCount} learned</span>
               <button
-                className="flex min-h-11 cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-left text-muted hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green max-[720px]:gap-1"
+                className="flex min-h-11 cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-left text-green-dark hover:text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green max-[720px]:gap-1"
                 type="button"
                 aria-expanded={isRevisitListOpen}
                 aria-controls="revisit-card-list"
@@ -341,9 +343,9 @@ export default function App() {
             <div className="grid size-[31px] place-items-center bg-[#e9eee4] text-green"><Sparkles size={16} /></div>
             <div className="flex flex-1 flex-col gap-1">
               <span className="text-[11px] font-semibold">GH-300 exam prep</span>
-              <span className="text-[10px] text-[#8d9189]">Practice question bank</span>
+              <span className="text-[10px] text-green-dark">Practice question bank</span>
             </div>
-            <span className="self-start font-mono text-[10px] text-[#8c9288]">{String(flashcards.length).padStart(2, '0')}</span>
+            <span className="self-start font-mono text-[10px] text-green-dark">{String(flashcards.length).padStart(2, '0')}</span>
           </div>
         </aside>
 
@@ -359,7 +361,7 @@ export default function App() {
           </div>
           {(isRevisitMode || quizCategory) && (
             <button
-              className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-line bg-white px-3 py-2 text-[12px] text-muted hover:text-green-dark"
+              className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-line bg-white px-3 py-2 text-[12px] text-green-dark hover:text-green-dark"
               type="button"
               onClick={() => {
                 if (quizCategory && !isRevisitMode) {
@@ -384,8 +386,8 @@ export default function App() {
           </div>
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
-              <div className="font-mono text-[9px] tracking-[.8px] text-[#8a8e84]">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
-              <h2 ref={studyHeadingRef} tabIndex={-1} className="mt-2 text-[17px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green">{isRevisitMode ? 'Revisit' : quizCategory ? `${quizCategory} quiz` : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-[#92978d]">{deckPosition + 1} of {studyDeck.length}</b></h2>
+              <div className="font-mono text-[9px] tracking-[.8px] text-green-dark">CERTIFICATION REVIEW <span className="px-1 text-[#c9c8bd]">/</span> {activeCard.subject.toUpperCase()}</div>
+              <h2 ref={studyHeadingRef} tabIndex={-1} className="mt-2 text-[17px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green">{isRevisitMode ? 'Revisit' : quizCategory ? `${quizCategory} quiz` : mode === 'quiz' ? 'Quick quiz' : 'Quick study'} <span className="text-[#b6b9ad]">·</span> <b className="text-[13px] font-normal text-green-dark">{deckPosition + 1} of {studyDeck.length}</b></h2>
             </div>
             <div className="flex items-baseline gap-[7px] font-mono text-[11px] text-[#adb0a5]" aria-label={`Card ${deckPosition + 1} of ${studyDeck.length}`}>
               <span className="text-[20px] text-green">{String(deckPosition + 1).padStart(2, '0')}</span>
@@ -424,11 +426,12 @@ export default function App() {
               role={mode === 'flashcards' && !isRevealed ? 'button' : undefined}
               tabIndex={mode === 'flashcards' && !isRevealed ? 0 : undefined}
               aria-label={mode === 'flashcards' && !isRevealed ? 'Reveal answer' : undefined}
+              aria-describedby={mode === 'flashcards' && isRevealed ? 'revealed-answer-description' : undefined}
               aria-live="polite"
             >
               <div className="flex items-center justify-between border-b border-[#efeee8] pb-[17px]">
                 <span className="font-mono text-[9px] tracking-[.8px] text-green">{mode === 'quiz' ? 'QUESTION' : isRevealed ? 'THE ANSWER' : 'QUESTION'}</span>
-                <span className="bg-[#f4f3ec] px-[9px] py-[5px] text-[9px] text-[#777e72]">{activeCard.subject}</span>
+                <span className="bg-[#f4f3ec] px-[9px] py-[5px] text-[9px] text-green-dark">{activeCard.subject}</span>
               </div>
               {mode === 'quiz' ? (
                 <QuizQuestion
@@ -461,16 +464,18 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col pt-6">
-                  <div className="mb-4 font-mono text-[10px] tracking-[.8px] text-muted">THE CORRECT ANSWER</div>
-                  <div className="flex flex-col gap-3">
-                    {activeCard.answers.map((answer) => (
-                      <div className="flex items-start gap-3 rounded-xl border border-line bg-[#f6faf9] p-4" key={answer}>
-                        <span className="choice-letter border-green text-green-dark">{String.fromCharCode(65 + activeCard.choices.indexOf(answer))}</span>
-                        <h3 className="pt-0.5 text-[18px] font-medium leading-relaxed tracking-[-.3px]">{answer}</h3>
-                      </div>
-                    ))}
+                  <div id="revealed-answer-description">
+                    <div className="mb-4 font-mono text-[10px] tracking-[.8px] text-green-dark">THE CORRECT ANSWER</div>
+                    <div className="flex flex-col gap-3">
+                      {activeCard.answers.map((answer) => (
+                        <div className="flex items-start gap-3 rounded-xl border border-line bg-[#f6faf9] p-4" key={answer}>
+                          <span className="choice-letter border-green text-green-dark">{String.fromCharCode(65 + activeCard.choices.indexOf(answer))}</span>
+                          <h3 className="pt-0.5 text-[18px] font-medium leading-relaxed tracking-[-.3px]">{answer}</h3>
+                        </div>
+                      ))}
+                    </div>
+                    {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-[#72786f]">{activeCard.explanation}</p>}
                   </div>
-                  {activeCard.explanation && <p className="m-0 max-w-[410px] text-[12px] leading-[1.65] text-[#72786f]">{activeCard.explanation}</p>}
                   <button
                     className="mt-4 flex min-h-11 w-fit cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[12px] text-green-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
                     type="button"
@@ -526,16 +531,16 @@ export default function App() {
                 <button className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-[13px] font-medium text-muted transition-colors hover:border-coral hover:text-coral" onClick={() => moveCard('practice')}>
                   <RotateCcw size={16} />
                   <span>Needs practice</span>
-                  <span className="ml-auto font-mono text-[10px] text-[#a8a99f] max-[720px]:hidden">←</span>
+                  <span className="ml-auto font-mono text-[10px] text-green-dark max-[720px]:hidden">←</span>
                 </button>
-                <span className="font-mono text-[8px] text-[#b0b2a8] max-[720px]:text-[7px]">OR</span>
+                <span className="font-mono text-[8px] text-green-dark max-[720px]:text-[7px]">OR</span>
                 <button className="primary-action flex-1" onClick={() => moveCard('learned')} disabled={!isRevealed}>
                   <Check size={17} />
                   <span>Got it</span>
                   <span className="ml-auto font-mono text-[10px] max-[720px]:hidden">→</span>
                 </button>
               </div>
-              <div className="mt-[15px] text-center text-[10px] text-[#92968d] max-[720px]:text-[9px]"><span className="mr-1 align-[-1px] text-[15px] text-green">↔</span> Swipe the card to sort it after checking your answer</div>
+              <div className="mt-[15px] text-center text-[10px] text-green-dark max-[720px]:text-[9px]"><span className="mr-1 align-[-1px] text-[15px] text-green">↔</span> Swipe the card to sort it after checking your answer</div>
             </>
           ) : !isQuizComplete && (
             <div className="mt-[25px] flex items-center justify-center gap-[15px] max-[720px]:mt-[19px]">
@@ -555,7 +560,7 @@ export default function App() {
         onStartQuiz={startCategoryQuiz}
       />
 
-      <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-[#989b91] max-[720px]:min-h-[48px]">
+      <footer className="flex min-h-[56px] items-center justify-between border-t border-line font-mono text-[8px] tracking-[.8px] text-muted max-[720px]:min-h-[48px]">
         <span>MAKE ROOM FOR CURIOSITY</span>
         <span className="font-sans text-[10px] tracking-normal">One card at a time <span className="ml-[5px] text-coral">✳</span></span>
       </footer>
