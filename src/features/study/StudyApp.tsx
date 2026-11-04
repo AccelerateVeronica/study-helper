@@ -234,7 +234,7 @@ export default function App() {
                 <div className="flex flex-1 flex-col">
                   <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
                   <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-[#8c9187]">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
-                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
+                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="group" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => {
                       const isSelected = quizSelections.includes(choice);
                       const isCorrectChoice = activeCard.answers.includes(choice);
@@ -294,7 +294,6 @@ export default function App() {
                       <div
                         className="relative flex min-h-[42px] items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 text-left text-[11px] max-[720px]:min-h-[44px]"
                         key={choice}
-                        role="listitem"
                       >
                         <span className="grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-[#868c80]">{String.fromCharCode(65 + index)}</span>
                         <span>{choice}</span>
