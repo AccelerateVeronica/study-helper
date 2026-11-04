@@ -31,6 +31,7 @@
   }
 
   button:focus-visible,
+  [role="button"]:focus-visible,
   a:focus-visible {
     outline: 3px solid var(--color-coral);
     outline-offset: 3px;
