@@ -36,6 +36,7 @@ export default function App() {
   const [isRevealed, setIsRevealed] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStart = useRef<number | null>(null);
+  const modeTabs = useRef<Record<StudyMode, HTMLButtonElement | null>>({ flashcards: null, quiz: null });
   const activeCard = flashcards[currentIndex];
   const quizFinished = activeCard.answers.length === 1
     ? quizSelections.length > 0
@@ -73,6 +74,23 @@ export default function App() {
     setStudy((current) => ({ ...current, mode: nextMode }));
     setQuizSelections([]);
     setIsRevealed(false);
+  }
+
+  function onModeKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    let nextMode: StudyMode;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      nextMode = mode === 'flashcards' ? 'quiz' : 'flashcards';
+    } else if (event.key === 'Home') {
+      nextMode = 'flashcards';
+    } else if (event.key === 'End') {
+      nextMode = 'quiz';
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (nextMode !== mode) changeMode(nextMode);
+    modeTabs.current[nextMode]?.focus();
   }
 
   function selectQuizChoice(choice: string) {
@@ -189,14 +207,15 @@ export default function App() {
         </aside>
 
         <section className="w-full max-w-[570px] max-[720px]:max-w-none" aria-label="Flashcard study area">
-          <div className="mb-5 flex w-fit gap-[3px] bg-[#eae9e1] p-[3px] max-[720px]:mb-[17px]" role="tablist" aria-label="Study mode">
-            <button role="tab" aria-selected={mode === 'flashcards'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : 'text-muted'}`} onClick={() => changeMode('flashcards')}>
+          <div className="mb-5 flex w-fit gap-[3px] bg-[#eae9e1] p-[3px] max-[720px]:mb-[17px]" role="tablist" aria-label="Study mode" onKeyDown={onModeKeyDown}>
+            <button ref={(tab) => { modeTabs.current.flashcards = tab; }} id="flashcards-tab" role="tab" aria-controls="study-mode-panel" aria-selected={mode === 'flashcards'} tabIndex={mode === 'flashcards' ? 0 : -1} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] ${mode === 'flashcards' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : 'text-muted'}`} onClick={() => changeMode('flashcards')}>
               <Layers size={15} /> Flashcards
             </button>
-            <button role="tab" aria-selected={mode === 'quiz'} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] ${mode === 'quiz' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : 'text-muted'}`} onClick={() => changeMode('quiz')}>
+            <button ref={(tab) => { modeTabs.current.quiz = tab; }} id="quiz-tab" role="tab" aria-controls="study-mode-panel" aria-selected={mode === 'quiz'} tabIndex={mode === 'quiz' ? 0 : -1} className={`flex cursor-pointer items-center gap-[7px] border-0 bg-transparent px-3 py-2 text-[10px] ${mode === 'quiz' ? 'bg-paper text-green-dark shadow-[0_1px_3px_#25332412]' : 'text-muted'}`} onClick={() => changeMode('quiz')}>
               <ListChecks size={15} /> Quiz
             </button>
           </div>
+          <div id="study-mode-panel" role="tabpanel" aria-labelledby={`${mode}-tab`} tabIndex={0}>
           <div className="mb-[19px] flex items-end justify-between max-[720px]:mb-[14px]">
             <div>
               <div className="font-mono text-[9px] tracking-[.8px] text-muted">CERTIFICATION REVIEW <span className="px-1 text-muted">/</span> {activeCard.subject.toUpperCase()}</div>
@@ -234,7 +253,7 @@ export default function App() {
                 <div className="flex flex-1 flex-col">
                   <h3 className="mb-[15px] mt-[22px] max-w-[420px] font-display text-[24px] font-semibold leading-[1.35] max-[720px]:mt-[21px] max-[720px]:text-[22px] max-[380px]:text-[20px]">{activeCard.question}</h3>
                   <div className="-mt-[7px] mb-[10px] font-mono text-[8px] tracking-[.7px] text-muted">{activeCard.answers.length > 1 ? 'SELECT ALL THAT APPLY' : 'SELECT ONE ANSWER'}</div>
-                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="list" aria-label="Answer choices">
+                  <div className="grid grid-cols-2 gap-2 max-[720px]:grid-cols-1 max-[720px]:gap-[7px]" role="group" aria-label="Answer choices">
                     {activeCard.choices.map((choice, index) => {
                       const isSelected = quizSelections.includes(choice);
                       const isCorrectChoice = activeCard.answers.includes(choice);
@@ -294,7 +313,6 @@ export default function App() {
                       <div
                         className="relative flex min-h-[42px] items-center gap-[9px] border border-[#e8e7df] bg-transparent px-[10px] py-2 text-left text-[11px] max-[720px]:min-h-[44px]"
                         key={choice}
-                        role="listitem"
                       >
                         <span className="grid size-[19px] flex-none place-items-center border border-[#e7e7df] font-mono text-[9px] text-muted">{String.fromCharCode(65 + index)}</span>
                         <span>{choice}</span>
@@ -356,6 +374,7 @@ export default function App() {
               }}>Skip</button>
             </div>
           )}
+          </div>
         </section>
       </section>
 
